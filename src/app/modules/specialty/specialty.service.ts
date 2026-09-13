@@ -23,7 +23,7 @@ const updateSpecialty = async (id: string, payload: Partial<Specialty>): Promise
     where: { id },
   });
 
-  if (!isSpecialtyExist) {
+  if (!isSpecialtyExist || isSpecialtyExist.isDeleted) {
     throw new AppError(404, "Specialty not found!");
   }
 
