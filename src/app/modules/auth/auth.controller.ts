@@ -26,6 +26,28 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const login = catchAsync(async (req: Request, res: Response) => {
+    const result = await AuthService.loginUser(req.body);
+
+    if (result.token) {
+        res.cookie("better-auth.session_token", result.token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
+        });
+    }
+
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "User logged in successfully",
+        data: result,
+    });
+});
+
 export const AuthController = {
     registerPatient,
+    login,
 };

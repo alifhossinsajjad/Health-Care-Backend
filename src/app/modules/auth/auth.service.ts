@@ -1,5 +1,5 @@
 import httpStatus from "http-status";
-import { Role } from "../../../../generated/prisma/client";
+import { Role, UserStatus } from "../../../../generated/prisma/client";
 import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../errors/ApiError";
@@ -12,10 +12,16 @@ interface IRegisterPatientPayload {
   name: string;
   email: string;
   password: string;
+  contactNumber: string;
+}
+
+interface ILoginPayload {
+  email: string;
+  password: string;
 }
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
-  const { name, email, password } = payload;
+  const { name, email, password, contactNumber } = payload;
 
   // Check if user already exists
   const existingUser = await prisma.user.findUnique({
@@ -49,19 +55,19 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
   try {
     // Create the associated Patient profile in DB within a transaction
     const patientData = await prisma.$transaction(async (tx) => {
-      // Note: Since 'Patient' model is empty in schema right now,
-      // I'm keeping this commented. Uncomment and adjust when model is ready!
-      /*
-            const patient = await tx.patient.create({
-                data: {
-                    email: authData.user.email,
-                    name: authData.user.name,
-                    // any other fields...
-                }
-            });
-            return patient;
-            */
-      return null;
+      const patient = await tx.patient.create({
+        data: {
+          name,
+          email,
+          contactNumber,
+          user: {
+            connect: {
+              id: authData.user.id
+            }
+          }
+        },
+      });
+      return patient;
     });
 
     return {
@@ -85,6 +91,46 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
   }
 };
 
+const loginUser = async (payload: ILoginPayload) => {
+  const { email, password } = payload;
+
+  // 1. Check if user exists in the database
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User does not exist!");
+  }
+
+  // 2. Check if user is blocked or deleted
+  if (user.status === UserStatus.BLOCKED) {
+    throw new ApiError(httpStatus.FORBIDDEN, "Your account has been blocked!");
+  }
+
+  if (user.isDeleted) {
+    throw new ApiError(httpStatus.FORBIDDEN, "Your account has been deleted!");
+  }
+
+  // 3. Verify password and get session/token using better-auth
+  const authData = await auth.api.signInEmail({
+    body: {
+      email,
+      password,
+    },
+  });
+
+  if (!authData?.user || !authData?.token) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password");
+  }
+
+  return {
+    user: authData.user,
+    token: authData.token,
+  };
+};
+
 export const AuthService = {
   registerPatient,
+  loginUser,
 };
