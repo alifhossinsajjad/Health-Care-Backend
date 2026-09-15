@@ -1,9 +1,9 @@
-model patient {
+model Patient {
     id            String   @id @default(uuid(7))
     name          String
     email         String   @unique
     profilePhoto  String?
-    contactNumber String
+    contactNumber String   @unique
     address       String?
     isDeleted     Boolean  @default(false)
     createdAt     DateTime @default(now())
@@ -11,5 +11,11 @@ model patient {
 
     // Relation
     userId String @unique
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    // Indexes for query optimization
+    @@index([email], name: "idx_patient_email")
+    @@index([isDeleted], name: "idx_patient_isDeleted")
+    // Table mapping
+    @@map("patients")
 }
