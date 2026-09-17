@@ -9,6 +9,8 @@ const createDoctorValidationSchema = z.object({
       email: z.string({ message: "Email is required" }).email({ message: "Invalid email address" }),
       contactNumber: z.string({ message: "Contact number is required" }),
       address: z.string({ message: "Address is required" }),
+      registrationNumber: z.string({ message: "Registration number is required" }),
+      experience: z.number({ message: "Experience is required" }).int().nonnegative(),
       gender: z.nativeEnum(Gender, { message: "Gender is required" }),
       appointmentFee: z.number({ message: "Appointment fee is required" }),
       qualification: z.string({ message: "Qualification is required" }),

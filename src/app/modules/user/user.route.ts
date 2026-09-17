@@ -10,5 +10,15 @@ router.post(
   validateRequest(UserValidation.createDoctorValidationSchema),
   UserController.createDoctor
 );
+// router.post(
+//   "/create-admin",
+//   validateRequest(UserValidation.createDoctorValidationSchema),
+//   UserController.createDoctor
+// );
+// router.post(
+//   "/create-super-admin",
+//   validateRequest(UserValidation.createDoctorValidationSchema),
+//   UserController.createDoctor
+// );
 
 export const UserRoutes = router;

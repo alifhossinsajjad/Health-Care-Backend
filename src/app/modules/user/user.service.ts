@@ -43,6 +43,7 @@ const createDoctor = async (payload: ICreateDoctorPayload) => {
       password: password,
       name: doctor.name,
       role: Role.DOCTOR,
+      needsPasswordChange: true,
     },
     // Mock a request object as better-auth API might require it
     // If better-auth complains about headers, we pass a dummy one
