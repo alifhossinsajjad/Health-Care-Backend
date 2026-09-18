@@ -26,12 +26,14 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "http-status": "^2.1.0",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "zod": "^4.6.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.5.0",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",

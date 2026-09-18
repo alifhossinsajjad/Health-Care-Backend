@@ -1,5 +1,5 @@
 import { Specialty } from "../../../../generated/prisma/client";
-import AppError from "../../../errors/AppError";
+import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../lib/prisma";
 
 const createSpeciality = async (payload: Specialty): Promise<Specialty> => {
@@ -24,7 +24,7 @@ const updateSpecialty = async (id: string, payload: Partial<Specialty>): Promise
   });
 
   if (!isSpecialtyExist || isSpecialtyExist.isDeleted) {
-    throw new AppError(404, "Specialty not found!");
+    throw new ApiError(404, "Specialty not found!");
   }
 
   const specialty = await prisma.specialty.update({
@@ -41,7 +41,7 @@ const deleteSpecialty = async (id: string): Promise<Specialty> => {
   });
 
   if (!isSpecialtyExist) {
-    throw new AppError(404, "Specialty not found!");
+    throw new ApiError(404, "Specialty not found!");
   }
 
   const specialty = await prisma.specialty.update({

@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { ICreateDoctorPayload } from "./user.interface";
-import AppError from "../../../errors/AppError";
+import { ApiError } from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { Role } from "../../../../generated/prisma/enums";
 import { auth } from "../../lib/auth";
@@ -19,7 +19,7 @@ const createDoctor = async (payload: ICreateDoctorPayload) => {
     });
 
     if (existingSpecialties.length !== specialties.length) {
-      throw new AppError(httpStatus.NOT_FOUND, "One or more specialties not found!");
+      throw new ApiError(httpStatus.NOT_FOUND, "One or more specialties not found!");
     }
   }
 
@@ -31,7 +31,7 @@ const createDoctor = async (payload: ICreateDoctorPayload) => {
   });
 
   if (isUserExist) {
-    throw new AppError(httpStatus.BAD_REQUEST, "User with this email already exists!");
+    throw new ApiError(httpStatus.BAD_REQUEST, "User with this email already exists!");
   }
 
   // 2. We need to create the user and account using Better Auth's API to ensure proper hashing and linking
@@ -51,7 +51,7 @@ const createDoctor = async (payload: ICreateDoctorPayload) => {
   });
 
   if (!authResponse?.user?.id) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to create user in auth system");
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to create user in auth system");
   }
 
   const userId = authResponse.user.id;
