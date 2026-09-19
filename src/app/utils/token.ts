@@ -15,7 +15,7 @@ export const getAccessToken = (payload: ITokenPayload): string => {
   return createToken(
     payload,
     envVars.JWT_ACCESS_SECRET,
-    envVars.JWT_ACCESS_EXPIRES_IN
+    envVars.JWT_ACCESS_EXPIRES_IN,
   );
 };
 
@@ -23,7 +23,7 @@ export const getRefreshToken = (payload: ITokenPayload): string => {
   return createToken(
     payload,
     envVars.JWT_REFRESH_SECRET,
-    envVars.JWT_REFRESH_EXPIRES_IN
+    envVars.JWT_REFRESH_EXPIRES_IN,
   );
 };
 
@@ -33,6 +33,6 @@ export const setBetterAuthCookie = (res: Response, token: string) => {
     secure: envVars.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: ms("7d") as number, // Convert string to milliseconds
+    maxAge: ms(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN as ms.StringValue), // Dynamically load expiration
   });
 };

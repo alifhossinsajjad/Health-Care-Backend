@@ -9,50 +9,64 @@ import { envVars } from "../../../config/env";
 import ms from "ms";
 
 const registerPatient = catchAsync(async (req: Request, res: Response) => {
-    const result = await AuthService.registerPatient(req.body);
+  const result = await AuthService.registerPatient(req.body);
+  const { betterAuthToken, refreshToken, accessToken, user, patient } = result;
 
-    if (result.token) {
-        setBetterAuthCookie(res, result.token);
-    }
+  if (betterAuthToken) {
+    setBetterAuthCookie(res, betterAuthToken);
+  }
 
-    sendResponse(res, {
-        statusCode: httpStatus.CREATED,
-        success: true,
-        message: "Patient registered successfully",
-        data: result,
-    });
+  if (refreshToken) {
+    setCookie(
+      res,
+      "refreshToken",
+      refreshToken,
+      ms(envVars.JWT_REFRESH_EXPIRES_IN as ms.StringValue)
+    );
+  }
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Patient registered successfully",
+    data: {
+      user,
+      patient,
+      accessToken
+    },
+  });
 });
 
 const login = catchAsync(async (req: Request, res: Response) => {
-    const result = await AuthService.loginUser(req.body);
-    const { betterAuthToken, refreshToken, accessToken, user } = result;
+  const result = await AuthService.loginUser(req.body);
+  const { betterAuthToken, refreshToken, accessToken, user } = result;
 
-    if (betterAuthToken) {
-        setBetterAuthCookie(res, betterAuthToken);
-    }
+  if (betterAuthToken) {
+    setBetterAuthCookie(res, betterAuthToken);
+  }
 
-    // Set our Custom Refresh Token using our secure setCookie utility!
-    if (refreshToken) {
-        setCookie(
-            res, 
-            "refreshToken", 
-            refreshToken, 
-            ms(envVars.JWT_REFRESH_EXPIRES_IN as ms.StringValue) // Converts "7d" to milliseconds!
-        );
-    }
+  // Set our Custom Refresh Token using our secure setCookie utility!
+  if (refreshToken) {
+    setCookie(
+      res,
+      "refreshToken",
+      refreshToken,
+      ms(envVars.JWT_REFRESH_EXPIRES_IN as ms.StringValue), // Converts "7d" to milliseconds!
+    );
+  }
 
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "User logged in successfully",
-        data: {
-            user,
-            accessToken // We intentionally DO NOT return refreshToken in JSON data for security!
-        },
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "User logged in successfully",
+    data: {
+      user,
+      accessToken, // We intentionally DO NOT return refreshToken in JSON data for security!
+    },
+  });
 });
 
 export const AuthController = {
-    registerPatient,
-    login,
+  registerPatient,
+  login,
 };

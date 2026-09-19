@@ -71,10 +71,22 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
       return patient;
     });
 
+    const accessToken = getAccessToken({
+      id: authData.user.id,
+      role: authData.user.role,
+    });
+
+    const refreshToken = getRefreshToken({
+      id: authData.user.id,
+      role: authData.user.role,
+    });
+
     return {
       user: authData.user,
       patient: patientData,
-      token: authData.token,
+      betterAuthToken: authData.token,
+      accessToken,
+      refreshToken,
     };
   } catch (error) {
     // ROLLBACK: If Patient profile creation fails, we MUST delete the user
