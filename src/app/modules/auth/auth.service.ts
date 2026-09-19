@@ -3,6 +3,7 @@ import { Role, UserStatus } from "../../../../generated/prisma/client";
 import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../errors/ApiError";
+import { getAccessToken, getRefreshToken } from "../../utils/token";
 
 // In a real senior-level app, this interface might be inferred from the Zod Schema:
 // import { z } from "zod";
@@ -62,9 +63,9 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
           contactNumber,
           user: {
             connect: {
-              id: authData.user.id
-            }
-          }
+              id: authData.user.id,
+            },
+          },
         },
       });
       return patient;
@@ -124,9 +125,21 @@ const loginUser = async (payload: ILoginPayload) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password");
   }
 
+  const accessToken = getAccessToken({
+    id: user.id,
+    role: user.role,
+  });
+
+  const refreshToken = getRefreshToken({
+    id: user.id,
+    role: user.role,
+  });
+
   return {
     user: authData.user,
-    token: authData.token,
+    betterAuthToken: authData.token,
+    accessToken,
+    refreshToken,
   };
 };
 

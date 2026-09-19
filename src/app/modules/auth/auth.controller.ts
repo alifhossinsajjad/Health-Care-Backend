@@ -3,19 +3,16 @@ import httpStatus from "http-status";
 import catchAsync from "../../../shared/catchAsync";
 import sendResponse from "../../../shared/sendResponse";
 import { AuthService } from "./auth.service";
+import { setCookie } from "../../utils/cookie";
+import { setBetterAuthCookie } from "../../utils/token";
+import { envVars } from "../../../config/env";
+import ms from "ms";
 
 const registerPatient = catchAsync(async (req: Request, res: Response) => {
     const result = await AuthService.registerPatient(req.body);
 
-    // Set the cookie manually in Express since Better-Auth doesn't have access to res here
     if (result.token) {
-        res.cookie("better-auth.session_token", result.token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
-        });
+        setBetterAuthCookie(res, result.token);
     }
 
     sendResponse(res, {
@@ -28,22 +25,30 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
 
 const login = catchAsync(async (req: Request, res: Response) => {
     const result = await AuthService.loginUser(req.body);
+    const { betterAuthToken, refreshToken, accessToken, user } = result;
 
-    if (result.token) {
-        res.cookie("better-auth.session_token", result.token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
-        });
+    if (betterAuthToken) {
+        setBetterAuthCookie(res, betterAuthToken);
+    }
+
+    // Set our Custom Refresh Token using our secure setCookie utility!
+    if (refreshToken) {
+        setCookie(
+            res, 
+            "refreshToken", 
+            refreshToken, 
+            ms(envVars.JWT_REFRESH_EXPIRES_IN as ms.StringValue) // Converts "7d" to milliseconds!
+        );
     }
 
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,
         message: "User logged in successfully",
-        data: result,
+        data: {
+            user,
+            accessToken // We intentionally DO NOT return refreshToken in JSON data for security!
+        },
     });
 });
 
