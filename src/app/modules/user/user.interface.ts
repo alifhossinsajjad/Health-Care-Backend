@@ -15,3 +15,23 @@ export interface ICreateDoctorPayload {
   };
   specialties : string[];
 }
+
+export interface ICreateAdmin {
+  password: string;
+  admin: {
+    name: string;
+    email: string;
+    profilePhoto?: string;
+    contactNumber: string;
+  };
+}
+
+export interface ICreateSuperAdmin {
+  password: string;
+  superAdmin: {
+    name: string;
+    email: string;
+    profilePhoto?: string;
+    contactNumber: string;
+  };
+}

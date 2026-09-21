@@ -1,0 +1,24 @@
+model Appointment {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId        String            
+  doctorId         String            
+  doctorScheduleId String            @unique @db.Uuid
+  videoCallingId   String
+  status           AppointmentStatus @default(SCHEDULED)
+  paymentStatus    PaymentStatus     @default(UNPAID)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Relations
+  patient        Patient         @relation(fields: [patientId], references: [id])
+  doctor         Doctor          @relation(fields: [doctorId], references: [id])
+  doctorSchedule DoctorSchedules @relation(fields: [doctorScheduleId], references: [id])
+
+  // One appointment can have one payment, review, prescription, and medical report
+  // payment          Payment? // Optional based on the task description, might need to create Payment model later if requested.
+  review        Review?
+  // prescription     Prescription? // Optional based on the task description
+  medicalReport MedicalReport?
+
+  @@map("appointments")
+}
