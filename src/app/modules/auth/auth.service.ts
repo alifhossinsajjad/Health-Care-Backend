@@ -88,7 +88,8 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
       accessToken,
       refreshToken,
     };
-  } catch (error) {
+  } catch (error: any) {
+    console.error("🔥 Error during patient registration:", error);
     // ROLLBACK: If Patient profile creation fails, we MUST delete the user
     // from the auth system so we don't have orphan records!
     await prisma.user.delete({
@@ -96,6 +97,14 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
         id: authData.user.id,
       },
     });
+
+    // Check if the error is a Prisma Unique Constraint Violation
+    if (error.code === "P2002") {
+      throw new ApiError(
+        httpStatus.CONFLICT,
+        "A user with this contact number already exists!",
+      );
+    }
 
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
