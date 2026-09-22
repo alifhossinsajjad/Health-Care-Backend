@@ -34,7 +34,7 @@ const getDoctorById = catchAsync(async (req: Request, res: Response) => {
 
 const updateDoctor = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await DoctorService.updateDoctor(id as string, req.body);
+  const result = await DoctorService.updateDoctor(id as string, req.body, req.user);
 
   sendResponse(res, {
     statusCode: 200,

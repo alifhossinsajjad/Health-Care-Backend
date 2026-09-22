@@ -3,6 +3,8 @@ import { prisma } from "../../lib/prisma";
 import { IPaginationOptions } from "../../interfaces/pagination";
 import { paginationHelper } from "../../../shared/paginationHelper";
 import { doctorSearchableFields } from "./doctor.constant";
+import { ApiError } from "../../errors/ApiError";
+import httpStatus from "http-status";
 
 const getAllDoctors = async (
   filters: any,
@@ -117,8 +119,16 @@ const getDoctorById = async (id: string) => {
   return result;
 };
 
-const updateDoctor = async (id: string, payload: any) => {
+const updateDoctor = async (id: string, payload: any, user: any) => {
   const { specialties, ...doctorData } = payload;
+
+  const doctor = await prisma.doctor.findUniqueOrThrow({
+    where: { id },
+  });
+
+  if (user.role === "DOCTOR" && doctor.userId !== user.id) {
+    throw new ApiError(httpStatus.FORBIDDEN, "You are not authorized to update another doctor's profile");
+  }
 
   // Senior Level Fix: Use Prisma's Nested Writes instead of $transaction
   // This performs an atomic update and avoids the connection pool deadlock completely.
