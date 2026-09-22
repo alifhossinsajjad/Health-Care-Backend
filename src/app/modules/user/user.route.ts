@@ -11,6 +11,7 @@ const router = express.Router();
 
 router.post(
   "/create-doctor",
+  authMiddleware(Role.SUPER_ADMIN, Role.ADMIN),
   validateRequest(UserValidation.createDoctorValidationSchema),
   UserController.createDoctor
 );

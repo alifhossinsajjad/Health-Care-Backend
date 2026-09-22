@@ -164,7 +164,58 @@ const loginUser = async (payload: ILoginPayload) => {
   };
 };
 
+const getMe = async (user: any) => {
+  const userInfo = await prisma.user.findUnique({
+    where: {
+      id: user.id,
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      status: true,
+      needsPasswordChange: true,
+      isDeleted: true,
+    },
+  });
+
+  if (!userInfo) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  let profileInfo = null;
+
+  if (userInfo.role === Role.SUPER_ADMIN) {
+    profileInfo = await prisma.superAdmin.findUnique({
+      where: { userId: userInfo.id },
+    });
+  } else if (userInfo.role === Role.ADMIN) {
+    profileInfo = await prisma.admin.findUnique({
+      where: { userId: userInfo.id },
+    });
+  } else if (userInfo.role === Role.DOCTOR) {
+    profileInfo = await prisma.doctor.findUnique({
+      where: { userId: userInfo.id },
+      include: {
+        specialties: {
+          include: {
+            specialty: true,
+          }
+        }
+      }
+    });
+  } else if (userInfo.role === Role.PATIENT) {
+    profileInfo = await prisma.patient.findUnique({
+      where: { userId: userInfo.id },
+    });
+  }
+
+  return { ...userInfo, ...profileInfo };
+};
+
 export const AuthService = {
   registerPatient,
   loginUser,
+  getMe,
 };
