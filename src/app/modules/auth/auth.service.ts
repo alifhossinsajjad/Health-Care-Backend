@@ -4,6 +4,7 @@ import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../errors/ApiError";
 import { getAccessToken, getRefreshToken } from "../../utils/token";
+import { verifyToken } from "../../utils/jwt";
 
 // In a real senior-level app, this interface might be inferred from the Zod Schema:
 // import { z } from "zod";
@@ -214,8 +215,48 @@ const getMe = async (user: any) => {
   return { ...userInfo, ...profileInfo };
 };
 
+const refreshToken = async (token: string) => {
+  let decodedData;
+  try {
+    decodedData = verifyToken<{ id: string; role: Role }>(
+      token,
+      process.env.JWT_REFRESH_SECRET as string
+    );
+  } catch (error) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
+  }
+
+  const { id } = decodedData;
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+  });
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User does not exist!");
+  }
+
+  if (user.status === UserStatus.BLOCKED) {
+    throw new ApiError(httpStatus.FORBIDDEN, "Your account has been blocked!");
+  }
+
+  if (user.isDeleted) {
+    throw new ApiError(httpStatus.FORBIDDEN, "Your account has been deleted!");
+  }
+
+  const accessToken = getAccessToken({
+    id: user.id,
+    role: user.role,
+  });
+
+  return {
+    accessToken,
+  };
+};
+
 export const AuthService = {
   registerPatient,
   loginUser,
   getMe,
+  refreshToken,
 };

@@ -7,6 +7,7 @@ import { setCookie } from "../../utils/cookie";
 import { setBetterAuthCookie } from "../../utils/token";
 import { envVars } from "../../../config/env";
 import ms from "ms";
+import { ApiError } from "../../errors/ApiError";
 
 const registerPatient = catchAsync(async (req: Request, res: Response) => {
   const result = await AuthService.registerPatient(req.body);
@@ -77,8 +78,26 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const refreshToken = catchAsync(async (req: Request, res: Response) => {
+  const { refreshToken } = req.cookies;
+  
+  if (!refreshToken) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Refresh token is missing");
+  }
+
+  const result = await AuthService.refreshToken(refreshToken);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Access token retrieved successfully",
+    data: result,
+  });
+});
+
 export const AuthController = {
   registerPatient,
   login,
   getMe,
+  refreshToken,
 };
