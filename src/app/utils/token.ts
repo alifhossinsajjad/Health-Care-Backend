@@ -28,11 +28,13 @@ export const getRefreshToken = (payload: ITokenPayload): string => {
 };
 
 export const setBetterAuthCookie = (res: Response, token: string) => {
+  const maxAgeMs = ms(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN as ms.StringValue);
   res.cookie("better-auth.session_token", token, {
     httpOnly: true,
     secure: envVars.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: ms(envVars.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN as ms.StringValue), // Dynamically load expiration
+    maxAge: maxAgeMs, // Dynamically load expiration
+    expires: new Date(Date.now() + maxAgeMs), // Explicitly set Expires
   });
 };

@@ -12,9 +12,6 @@ const validateRequest = (schema: ZodTypeAny) => {
       });
 
       req.body = (parsedData as any).body || req.body;
-      req.query = (parsedData as any).query || req.query;
-      req.params = (parsedData as any).params || req.params;
-      req.cookies = (parsedData as any).cookies || req.cookies;
 
       return next();
     } catch (error) {

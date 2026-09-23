@@ -16,7 +16,8 @@ export const setCookie = (
   };
 
   if (maxAgeMs) {
-    options.maxAge = maxAgeMs; // Set expiration to match the token's exact expiry
+    options.maxAge = maxAgeMs; 
+    options.expires = new Date(Date.now() + maxAgeMs); // Explicitly set Expires so Postman picks it up
   }
 
   res.cookie(cookieName, token, options);
