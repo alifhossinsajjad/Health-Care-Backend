@@ -11,30 +11,12 @@ import { ApiError } from "../../errors/ApiError";
 
 const registerPatient = catchAsync(async (req: Request, res: Response) => {
   const result = await AuthService.registerPatient(req.body);
-  const { betterAuthToken, refreshToken, accessToken, user, patient } = result;
-
-  if (betterAuthToken) {
-    setBetterAuthCookie(res, betterAuthToken);
-  }
-
-  if (refreshToken) {
-    setCookie(
-      res,
-      "refreshToken",
-      refreshToken,
-      ms(envVars.JWT_REFRESH_EXPIRES_IN as ms.StringValue)
-    );
-  }
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: "Patient registered successfully",
-    data: {
-      user,
-      patient,
-      accessToken
-    },
+    message: "Patient registered successfully. Please verify your email.",
+    data: result,
   });
 });
 
@@ -122,6 +104,28 @@ const logout = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const resendVerificationEmail = catchAsync(async (req: Request, res: Response) => {
+  await AuthService.resendVerificationEmail(req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Verification email sent successfully.",
+    data: null,
+  });
+});
+
+const verifyEmailWithOTP = catchAsync(async (req: Request, res: Response) => {
+  await AuthService.verifyEmailWithOTP(req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Email verified successfully.",
+    data: null,
+  });
+});
+
 export const AuthController = {
   registerPatient,
   login,
@@ -129,4 +133,6 @@ export const AuthController = {
   refreshToken,
   changePassword,
   logout,
+  resendVerificationEmail,
+  verifyEmailWithOTP
 };

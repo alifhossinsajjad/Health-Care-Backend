@@ -5,7 +5,9 @@ import { Role } from "../../../generated/prisma/enums";
 import { UserStatus } from "../../../generated/prisma/enums";
 import ms from "ms";
 import { envVars } from "../../config/env";
-import { bearer } from "better-auth/plugins";
+import { bearer, emailOTP } from "better-auth/plugins";
+
+import { sendEmail } from "../utils/email";
 
 // your prisma client instance
 
@@ -14,9 +16,27 @@ export const auth = betterAuth({
         provider: "postgresql", // or "mysql", "sqlite", ...etc
     }),
     emailAndPassword: {
-        enabled: true
+        enabled: true,
+        requireEmailVerification: true,
     },
-    plugins: [bearer()],
+    plugins: [
+        bearer(),
+        emailOTP({
+            async sendVerificationOTP({ email, otp, type }) {
+                // Type is 'email-verification' by default
+                // We do NOT await here so the API responds instantly!
+                sendEmail({
+                    to: email,
+                    subject: "Verify your email address",
+                    templateName: "otp", // The template now uses 'otp' parameter
+                    templateData: {
+                        otp: otp, // 6-digit code
+                        verificationUrl: null, // No magic link needed
+                    },
+                }).catch(err => console.error("Failed to send OTP email:", err));
+            },
+        })
+    ],
 
 
     user: {

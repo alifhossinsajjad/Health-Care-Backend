@@ -10,7 +10,13 @@ const app: Application = express();
 app.use(express.json());
 app.use(cookieParser())
 
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./app/lib/auth";
+
 app.use("/api/v1", indexRoutes);
+
+// Mount better-auth endpoints
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Welcome to Healthcare Backend system");
