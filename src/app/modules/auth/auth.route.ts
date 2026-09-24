@@ -28,4 +28,16 @@ router.post(
   AuthController.refreshToken
 );
 
+router.post(
+  "/change-password",
+  authMiddleware(),
+  validateRequest(AuthValidation.changePasswordSchema),
+  AuthController.changePassword
+);
+
+router.post(
+  "/logout",
+  AuthController.logout
+);
+
 export const AuthRoutes = router;

@@ -3,7 +3,7 @@ import httpStatus from "http-status";
 import catchAsync from "../../../shared/catchAsync";
 import sendResponse from "../../../shared/sendResponse";
 import { AuthService } from "./auth.service";
-import { setCookie } from "../../utils/cookie";
+import { setCookie, clearCookie } from "../../utils/cookie";
 import { setBetterAuthCookie } from "../../utils/token";
 import { envVars } from "../../../config/env";
 import ms from "ms";
@@ -95,9 +95,38 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const changePassword = catchAsync(async (req: Request, res: Response) => {
+  await AuthService.changePassword(req.user, req.body, req);
+
+  // Clear cookies to force the user to login again with the new password
+  clearCookie(res, "refreshToken");
+  clearCookie(res, "better-auth.session_token");
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Password changed successfully. Please login again.",
+    data: null,
+  });
+});
+
+const logout = catchAsync(async (req: Request, res: Response) => {
+  clearCookie(res, "refreshToken");
+  clearCookie(res, "better-auth.session_token");
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "User logged out successfully",
+    data: null,
+  });
+});
+
 export const AuthController = {
   registerPatient,
   login,
   getMe,
   refreshToken,
+  changePassword,
+  logout,
 };

@@ -5,6 +5,7 @@ import { Role } from "../../../generated/prisma/enums";
 import { UserStatus } from "../../../generated/prisma/enums";
 import ms from "ms";
 import { envVars } from "../../config/env";
+import { bearer } from "better-auth/plugins";
 
 // your prisma client instance
 
@@ -15,6 +16,7 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true
     },
+    plugins: [bearer()],
 
 
     user: {

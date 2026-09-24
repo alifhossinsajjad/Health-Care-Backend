@@ -254,9 +254,37 @@ const refreshToken = async (token: string) => {
   };
 };
 
+const changePassword = async (user: any, payload: any, req: any) => {
+  const { oldPassword, newPassword } = payload;
+
+  const sessionToken = req.cookies?.["better-auth.session_token"];
+  if (!sessionToken) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Session cookie is missing. Please login again.");
+  }
+
+  try {
+    await auth.api.changePassword({
+      body: {
+        newPassword,
+        currentPassword: oldPassword,
+        revokeOtherSessions: true,
+      },
+      headers: new Headers({
+        Authorization: `Bearer ${sessionToken}`,
+      }),
+    });
+  } catch (error: any) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      error?.message || "Failed to change password. Please check your old password."
+    );
+  }
+};
+
 export const AuthService = {
   registerPatient,
   loginUser,
   getMe,
   refreshToken,
+  changePassword,
 };
