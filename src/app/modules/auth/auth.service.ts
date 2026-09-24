@@ -47,6 +47,14 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
     },
   });
 
+  // Automatically trigger the OTP sending asynchronously so it doesn't block the API response (4s wait time)
+  auth.api.sendVerificationOTP({
+    body: {
+      email,
+      type: "email-verification"
+    }
+  }).catch(err => console.error("Failed to trigger OTP sending:", err));
+
   if (!authData?.user) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
@@ -72,22 +80,10 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
       return patient;
     });
 
-    const accessToken = getAccessToken({
-      id: authData.user.id,
-      role: authData.user.role,
-    });
-
-    const refreshToken = getRefreshToken({
-      id: authData.user.id,
-      role: authData.user.role,
-    });
-
     return {
       user: authData.user,
       patient: patientData,
-      betterAuthToken: authData.token,
-      accessToken,
-      refreshToken,
+      message: "Please check your email to verify your account before logging in.",
     };
   } catch (error: any) {
     console.error("🔥 Error during patient registration:", error);
@@ -136,12 +132,30 @@ const loginUser = async (payload: ILoginPayload) => {
   }
 
   // 3. Verify password and get session/token using better-auth
-  const authData = await auth.api.signInEmail({
-    body: {
-      email,
-      password,
-    },
-  });
+  let authData;
+  try {
+    authData = await auth.api.signInEmail({
+      body: {
+        email,
+        password,
+      },
+    });
+  } catch (error: any) {
+    if (!user.emailVerified) {
+      // Auto-send OTP asynchronously if the user tries to login but email is unverified
+      auth.api.sendVerificationOTP({
+        body: {
+          email,
+          type: "email-verification"
+        }
+      }).catch(err => console.error("Failed to auto-send OTP on login:", err));
+      throw new ApiError(
+        httpStatus.FORBIDDEN, 
+        "Your email is not verified. A new OTP has been sent to your email."
+      );
+    }
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password");
+  }
 
   if (!authData?.user || !authData?.token) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password");
@@ -281,10 +295,64 @@ const changePassword = async (user: any, payload: any, req: any) => {
   }
 };
 
+const resendVerificationEmail = async (payload: { email: string }) => {
+  const { email } = payload;
+  
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  if (user.emailVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Email is already verified");
+  }
+
+  try {
+    // Send asynchronously so the API responds instantly
+    auth.api.sendVerificationOTP({
+      body: {
+        email,
+        type: "email-verification"
+      },
+    }).catch(err => console.error("Failed to resend OTP email:", err));
+  } catch (error: any) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error?.message || "Failed to resend verification email"
+    );
+  }
+};
+
+const verifyEmailWithOTP = async (payload: { email: string; otp: string }) => {
+  const { email, otp } = payload;
+  
+  try {
+    const result = await auth.api.verifyEmailOTP({
+      body: {
+        email,
+        otp,
+      },
+    });
+    
+    // better-auth throws an error if verification fails
+    return result;
+  } catch (error: any) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      error?.message || "Invalid or expired OTP"
+    );
+  }
+};
+
 export const AuthService = {
   registerPatient,
   loginUser,
   getMe,
   refreshToken,
   changePassword,
+  resendVerificationEmail,
+  verifyEmailWithOTP,
 };
