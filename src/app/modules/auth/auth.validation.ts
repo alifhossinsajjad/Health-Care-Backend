@@ -62,10 +62,34 @@ export const verifyEmailWithOTPSchema = z.object({
   })
 });
 
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string({
+      message: "Email is required",
+    }).email("Invalid email address"),
+  })
+});
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    email: z.string({
+      message: "Email is required",
+    }).email("Invalid email address"),
+    otp: z.string({
+      message: "OTP is required",
+    }).length(6, "OTP must be exactly 6 characters"),
+    newPassword: z.string({
+      message: "New Password is required",
+    }).min(8, "Password must be at least 8 characters long"),
+  })
+});
+
 export const AuthValidation = {
   patientRegistrationSchema,
   loginSchema,
   changePasswordSchema,
   resendVerificationEmailSchema,
-  verifyEmailWithOTPSchema
+  verifyEmailWithOTPSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema
 };

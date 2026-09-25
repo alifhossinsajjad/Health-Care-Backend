@@ -23,11 +23,15 @@ export const auth = betterAuth({
         bearer(),
         emailOTP({
             async sendVerificationOTP({ email, otp, type }) {
-                // Type is 'email-verification' by default
+                // Determine the subject based on the OTP type
+                const subject = type === 'forget-password' 
+                    ? "Reset your password" 
+                    : "Verify your email address";
+                    
                 // We do NOT await here so the API responds instantly!
                 sendEmail({
                     to: email,
-                    subject: "Verify your email address",
+                    subject,
                     templateName: "otp", // The template now uses 'otp' parameter
                     templateData: {
                         otp: otp, // 6-digit code

@@ -347,6 +347,51 @@ const verifyEmailWithOTP = async (payload: { email: string; otp: string }) => {
   }
 };
 
+const forgotPassword = async (payload: { email: string }) => {
+  const { email } = payload;
+  
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  try {
+    // We send it asynchronously to not block the API response
+    auth.api.forgetPasswordEmailOTP({
+      body: { email }
+    }).catch(err => console.error("Failed to send forgot password OTP:", err));
+  } catch (error: any) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error?.message || "Failed to process forgot password request"
+    );
+  }
+};
+
+const resetPassword = async (payload: { email: string; otp: string; newPassword: string }) => {
+  const { email, otp, newPassword } = payload;
+
+  try {
+    const result = await auth.api.resetPasswordEmailOTP({
+      body: {
+        email,
+        otp,
+        password: newPassword,
+      }
+    });
+
+    return result;
+  } catch (error: any) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      error?.message || "Invalid or expired OTP"
+    );
+  }
+};
+
 export const AuthService = {
   registerPatient,
   loginUser,
@@ -355,4 +400,6 @@ export const AuthService = {
   changePassword,
   resendVerificationEmail,
   verifyEmailWithOTP,
+  forgotPassword,
+  resetPassword
 };
