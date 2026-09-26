@@ -71,4 +71,21 @@ router.get("/login/google", AuthController.googleLogin);
 router.get("/google/success", AuthController.googleLoginSuccess);
 router.get("/oauth/error", AuthController.handleOAuthError);
 
+router.get(
+  "/verification-success",
+  (req, res) => {
+    res.send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4;">
+          <div style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+            <h1 style="color: #28a745;">Email Verified! ✅</h1>
+            <p style="color: #555; font-size: 18px;">Your email has been successfully verified.</p>
+            <p style="color: #777;">You can now return to the app and login.</p>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+);
+
 export const AuthRoutes = router;
