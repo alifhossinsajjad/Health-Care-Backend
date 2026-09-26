@@ -78,17 +78,29 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
 });
 
 const changePassword = catchAsync(async (req: Request, res: Response) => {
-  await AuthService.changePassword(req.user, req.body, req);
+  const result = await AuthService.changePassword(req.user, req.body, req);
 
-  // Clear cookies to force the user to login again with the new password
-  clearCookie(res, "refreshToken");
-  clearCookie(res, "better-auth.session_token");
+  // If the service returned new tokens (e.g. for forced password change), set them
+  if (result?.accessToken && result?.refreshToken) {
+    res.cookie("refreshToken", result.refreshToken, {
+      secure: envVars.NODE_ENV === "production",
+      httpOnly: true,
+    });
+    res.cookie("accessToken", result.accessToken, {
+      secure: envVars.NODE_ENV === "production",
+      httpOnly: true,
+    });
+  } else {
+    // Standard behavior: clear cookies to force re-login
+    clearCookie(res, "refreshToken");
+    clearCookie(res, "better-auth.session_token");
+  }
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Password changed successfully. Please login again.",
-    data: null,
+    message: result?.accessToken ? "Password changed successfully. You are now fully logged in." : "Password changed successfully. Please login again.",
+    data: result || null,
   });
 });
 
@@ -148,6 +160,57 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const googleLogin = catchAsync((req: Request, res: Response) => {
+  const redirectPath = req.query.redirect || "/dashboard";
+  const encodedRedirectPath = encodeURIComponent(redirectPath as string);
+  const callbackURL = `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success?redirect=${encodedRedirectPath}`;
+
+  res.render("googleRedirect", {
+      callbackURL: callbackURL,
+      betterAuthUrl: envVars.BETTER_AUTH_URL,
+  });
+});
+
+const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
+  const redirectPath = req.query.redirect as string || "/dashboard";
+  const sessionToken = req.cookies?.["better-auth.session_token"];
+  
+  if (!sessionToken) {
+    return res.redirect(`${envVars.FRONTEND_URL}/login?error=oauth_failed`);
+  }
+
+  try {
+    const result = await AuthService.googleLoginSuccess(sessionToken);
+
+    // Set ONLY refreshToken in HTTP-only cookie for security (CSRF protection)
+    // The frontend will call /refresh-token to get the accessToken in memory!
+    res.cookie("refreshToken", result.refreshToken, {
+      secure: envVars.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: envVars.NODE_ENV === "production" ? "none" : "lax", // Fix for localhost development
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (match your refresh token expiry)
+    });
+
+    // Validate redirect path to prevent open redirect vulnerabilities
+    const isValidRedirectPath = redirectPath.startsWith("/") && !redirectPath.startsWith("//");
+    const finalRedirectPath = isValidRedirectPath ? redirectPath : "/dashboard";
+
+    // Append auth=success to the redirect URL
+    const separator = finalRedirectPath.includes("?") ? "&" : "?";
+    const redirectUrlWithStatus = `${envVars.FRONTEND_URL}${finalRedirectPath}${separator}auth=success`;
+
+    // Redirect to frontend with deep link support and success status
+    res.redirect(redirectUrlWithStatus);
+  } catch (error) {
+    res.redirect(`${envVars.FRONTEND_URL}/login?error=AuthenticationFailed`);
+  }
+});
+
+const handleOAuthError = catchAsync((req: Request, res: Response) => {
+  const error = req.query.error as string || "oauth_failed";
+  res.redirect(`${envVars.FRONTEND_URL}/login?error=${error}`);
+});
+
 export const AuthController = {
   registerPatient,
   login,
@@ -158,5 +221,8 @@ export const AuthController = {
   resendVerificationEmail,
   verifyEmailWithOTP,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  googleLogin,
+  googleLoginSuccess,
+  handleOAuthError
 };

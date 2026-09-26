@@ -15,58 +15,46 @@ router.post(
 router.post(
   "/resend-verification-email",
   validateRequest(AuthValidation.resendVerificationEmailSchema),
-  AuthController.resendVerificationEmail
+  AuthController.resendVerificationEmail,
 );
 
 router.post(
   "/verify-email",
   validateRequest(AuthValidation.verifyEmailWithOTPSchema),
-  AuthController.verifyEmailWithOTP
+  AuthController.verifyEmailWithOTP,
 );
 
 router.post(
   "/forgot-password",
   validateRequest(AuthValidation.forgotPasswordSchema),
-  AuthController.forgotPassword
+  AuthController.forgotPassword,
 );
 
 router.post(
   "/reset-password",
   validateRequest(AuthValidation.resetPasswordSchema),
-  AuthController.resetPassword
+  AuthController.resetPassword,
 );
 
 router.post(
   "/login",
   validateRequest(AuthValidation.loginSchema),
-  AuthController.login
+  AuthController.login,
 );
-router.get(
-  "/me",
-  authMiddleware(),
-  AuthController.getMe
-);
+router.get("/me", authMiddleware(), AuthController.getMe);
 
-router.post(
-  "/refresh-token",
-  AuthController.refreshToken
-);
+router.post("/refresh-token", AuthController.refreshToken);
 
 router.post(
   "/change-password",
   authMiddleware(),
   validateRequest(AuthValidation.changePasswordSchema),
-  AuthController.changePassword
-)
-router.post(
-  "/logout",
-  AuthController.logout
+  AuthController.changePassword,
 );
+router.post("/logout", AuthController.logout);
 
-router.get(
-  "/verification-success",
-  (req, res) => {
-    res.send(`
+router.get("/verification-success", (req, res) => {
+  res.send(`
       <html>
         <body style="font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4;">
           <div style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
@@ -77,7 +65,10 @@ router.get(
         </body>
       </html>
     `);
-  }
-);
+});
+
+router.get("/login/google", AuthController.googleLogin);
+router.get("/google/success", AuthController.googleLoginSuccess);
+router.get("/oauth/error", AuthController.handleOAuthError);
 
 export const AuthRoutes = router;

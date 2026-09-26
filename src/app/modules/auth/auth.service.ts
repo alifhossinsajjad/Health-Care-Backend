@@ -287,6 +287,32 @@ const changePassword = async (user: any, payload: any, req: any) => {
         Authorization: `Bearer ${sessionToken}`,
       }),
     });
+
+    // If user needed password change, mark it as false
+    const userData = await prisma.user.findUnique({ where: { id: user.id } });
+    if (userData?.needsPasswordChange) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { needsPasswordChange: false }
+      });
+    }
+
+    // Generate new access and refresh tokens
+    const accessToken = getAccessToken({
+      id: user.id,
+      role: user.role,
+    });
+
+    const refreshToken = getRefreshToken({
+      id: user.id,
+      role: user.role,
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+
   } catch (error: any) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
@@ -392,6 +418,59 @@ const resetPassword = async (payload: { email: string; otp: string; newPassword:
   }
 };
 
+const googleLoginSuccess = async (sessionToken: string) => {
+  if (!sessionToken) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Session token is missing");
+  }
+
+  const session = await auth.api.getSession({
+    headers: {
+      cookie: `better-auth.session_token=${sessionToken}`,
+    },
+  });
+
+  if (!session || !session.user) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid or expired session");
+  }
+
+  const { user } = session;
+
+  // IMPORTANT: Since Google Auth creates the User record directly via better-auth,
+  // it bypasses our custom registerPatient flow. We must create the Patient profile here if it doesn't exist!
+  if (user.role === "PATIENT") {
+    const isPatientExists = await prisma.patient.findUnique({
+      where: { userId: user.id }
+    });
+
+    if (!isPatientExists) {
+      await prisma.patient.create({
+        data: {
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          contactNumber: "", // Provided by default since Google OAuth doesn't return phone numbers
+        }
+      });
+    }
+  }
+
+  const accessToken = getAccessToken({
+    id: user.id,
+    role: user.role as any,
+  });
+
+  const refreshToken = getRefreshToken({
+    id: user.id,
+    role: user.role as any,
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    user
+  };
+};
+
 export const AuthService = {
   registerPatient,
   loginUser,
@@ -401,5 +480,6 @@ export const AuthService = {
   resendVerificationEmail,
   verifyEmailWithOTP,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  googleLoginSuccess
 };

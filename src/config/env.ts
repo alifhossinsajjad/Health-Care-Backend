@@ -15,7 +15,6 @@ interface EnvConfig {
   JWT_REFRESH_SECRET: string;
   JWT_REFRESH_EXPIRES_IN: string;
 
-  
   BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN: string;
   BETTER_AUTH_SESSION_TOKEN_UPDATE_AGE: string;
 
@@ -24,6 +23,20 @@ interface EnvConfig {
   EMAIL_SENDER_SMTP_PORT: string;
   EMAIL_SENDER_SMTP_USER: string;
   EMAIL_SENDER_SMTP_PASS: string;
+
+  // GOOGLE AUTH
+
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_CALLBACK_URL: string;
+  FRONTEND_URL: string;
+
+  // cloudinary
+  CLOUDINARY: {
+    CLOUDINARY_CLOUD_NAME: string;
+    CLOUDINARY_API_KEY: string;
+    CLOUDINARY_API_SECRET: string;
+  };
 }
 
 const loadEnvVariables = (): EnvConfig => {
@@ -42,7 +55,14 @@ const loadEnvVariables = (): EnvConfig => {
     "EMAIL_SENDER_SMTP_HOST",
     "EMAIL_SENDER_SMTP_PORT",
     "EMAIL_SENDER_SMTP_USER",
-    "EMAIL_SENDER_SMTP_PASS"
+    "EMAIL_SENDER_SMTP_PASS",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_CALLBACK_URL",
+    "FRONTEND_URL",
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
   ];
 
   requiredEnvVariables.forEach((variable) => {
@@ -60,13 +80,25 @@ const loadEnvVariables = (): EnvConfig => {
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET as string,
     JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN?.trim() as string,
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET as string,
-    JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN?.trim() as string,
-    BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN: process.env.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN?.trim() as string,
-    BETTER_AUTH_SESSION_TOKEN_UPDATE_AGE: process.env.BETTER_AUTH_SESSION_TOKEN_UPDATE_AGE?.trim() as string,
+    JWT_REFRESH_EXPIRES_IN:
+      process.env.JWT_REFRESH_EXPIRES_IN?.trim() as string,
+    BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN:
+      process.env.BETTER_AUTH_SESSION_TOKEN_EXPIRES_IN?.trim() as string,
+    BETTER_AUTH_SESSION_TOKEN_UPDATE_AGE:
+      process.env.BETTER_AUTH_SESSION_TOKEN_UPDATE_AGE?.trim() as string,
     EMAIL_SENDER_SMTP_HOST: process.env.EMAIL_SENDER_SMTP_HOST as string,
     EMAIL_SENDER_SMTP_PORT: process.env.EMAIL_SENDER_SMTP_PORT as string,
     EMAIL_SENDER_SMTP_USER: process.env.EMAIL_SENDER_SMTP_USER as string,
     EMAIL_SENDER_SMTP_PASS: process.env.EMAIL_SENDER_SMTP_PASS as string,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID as string,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET as string,
+    GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL as string,
+    FRONTEND_URL: process.env.FRONTEND_URL as string,
+    CLOUDINARY: {
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME as string,
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY as string,
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET as string,
+    },
   };
 };
 

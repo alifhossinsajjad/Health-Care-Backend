@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authenticating with Google...</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e2e8f0;
+            border-bottom-color: #3b82f6;
+            border-radius: 50%;
+            display: inline-block;
+            animation: rotation 1s linear infinite;
+            margin-bottom: 24px;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+
+        p {
+            font-size: 0.875rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .error-container {
+            display: none;
+            color: #ef4444;
+            margin-top: 16px;
+            padding: 12px;
+            background: #fef2f2;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="main-container">
+        <span class="loader" id="loader"></span>
+        <h2 id="title">Redirecting to Google</h2>
+        <p id="subtitle">Please wait while we securely connect you to your account...</p>
+        
+        <div class="error-container" id="error-box"></div>
+    </div>
+
+    <script>
+        const showError = (message) => {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('title').innerText = 'Authentication Failed';
+            document.getElementById('title').style.color = '#ef4444';
+            document.getElementById('subtitle').style.display = 'none';
+            
+            const errorBox = document.getElementById('error-box');
+            errorBox.style.display = 'block';
+            errorBox.innerText = message || 'An unexpected error occurred. Please try again.';
+        };
+
+        (async () => {
+            try {
+                const response = await fetch("<%= betterAuthUrl %>/api/auth/sign-in/social", {
+                    method : "POST",
+                    headers : {
+                        "Content-Type" : "application/json"
+                    },
+                    credentials : "include",
+                    body: JSON.stringify({
+                        provider : "google",
+                        callbackURL: "<%= callbackURL %>"
+                    })
+                });
+
+                const data = await response.json();
+
+                if(data.url){
+                    window.location.href = data.url;
+                } else {
+                    showError(data.error?.message || "Invalid response from authentication server.");
+                }
+            } catch (error) {
+                showError(error.message);
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import { ApiError } from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { Role } from "../../../../generated/prisma/enums";
 import { auth } from "../../lib/auth";
- // or standard Headers if using fetch API
+import { sendEmail } from "../../utils/email";
 
 const createDoctor = async (payload: ICreateDoctorPayload) => {
   const { password, doctor, specialties } = payload;
@@ -112,6 +112,18 @@ const createDoctor = async (payload: ICreateDoctorPayload) => {
     },
   });
 
+  // Send the credentials email asynchronously
+  sendEmail({
+    to: payload.doctor.email,
+    subject: "Your Doctor Account Credentials",
+    templateName: "admin-credentials", // Reusing the same template as it's generic enough
+    templateData: {
+      name: payload.doctor.name,
+      email: payload.doctor.email,
+      password: payload.password,
+    },
+  }).catch(err => console.error("Failed to send doctor credentials email:", err));
+
   return finalDoctorData;
 };
 
@@ -189,6 +201,18 @@ const createAdmin = async (payload: ICreateAdmin) => {
 
       return createdAdmin;
     });
+
+    // Send the credentials email asynchronously
+    sendEmail({
+      to: payload.admin.email,
+      subject: "Your Admin Account Credentials",
+      templateName: "admin-credentials",
+      templateData: {
+        name: payload.admin.name,
+        email: payload.admin.email,
+        password: payload.password,
+      },
+    }).catch(err => console.error("Failed to send admin credentials email:", err));
 
     return result;
   } catch (error) {
@@ -275,6 +299,18 @@ const createSuperAdmin = async (payload: ICreateSuperAdmin) => {
 
       return createdSuperAdmin;
     });
+
+    // Send the credentials email asynchronously
+    sendEmail({
+      to: payload.superAdmin.email,
+      subject: "Your Super Admin Account Credentials",
+      templateName: "admin-credentials",
+      templateData: {
+        name: payload.superAdmin.name,
+        email: payload.superAdmin.email,
+        password: payload.password,
+      },
+    }).catch(err => console.error("Failed to send super admin credentials email:", err));
 
     return result;
   } catch (error) {

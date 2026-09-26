@@ -4,12 +4,14 @@ import validateRequest from "../../middlewares/validateRequest";
 import { SpecialtyValidation } from "./specialty.validation";
 import authMiddleware from "../../middlewares/authMiddleware";
 import { Role } from "../../../../generated/prisma/client";
+import { multerUpload } from "../../../config/multer.config";
 
 const router = Router();
 
 router.post(
   "/",
   authMiddleware(Role.ADMIN, Role.SUPER_ADMIN),
+  multerUpload.single("file"),
   validateRequest(SpecialtyValidation.createSpecialty),
   SpecialtyController.createSpecialty,
 );
