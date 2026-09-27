@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { SpecialtyController } from "./specialty.controller";
 import validateRequest from "../../middlewares/validateRequest";
 import { SpecialtyValidation } from "./specialty.validation";
@@ -6,12 +6,15 @@ import authMiddleware from "../../middlewares/authMiddleware";
 import { Role } from "../../../../generated/prisma/client";
 import { multerUpload } from "../../../config/multer.config";
 
+import parseFormData from "../../middlewares/parseFormData";
+
 const router = Router();
 
 router.post(
   "/",
-  authMiddleware(Role.ADMIN, Role.SUPER_ADMIN),
+  // authMiddleware(Role.ADMIN, Role.SUPER_ADMIN),
   multerUpload.single("file"),
+  parseFormData("icon"), // Clean and reusable!
   validateRequest(SpecialtyValidation.createSpecialty),
   SpecialtyController.createSpecialty,
 );

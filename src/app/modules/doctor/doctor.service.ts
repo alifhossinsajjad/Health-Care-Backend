@@ -6,32 +6,39 @@ import { doctorSearchableFields } from "./doctor.constant";
 import { ApiError } from "../../errors/ApiError";
 import httpStatus from "http-status";
 
+import { PrismaQueryBuilder } from "../../../shared/PrismaQueryBuilder";
+
 const getAllDoctors = async (
   filters: any,
   options: IPaginationOptions
 ) => {
-  const { limit, page, skip, sortBy, sortOrder } =
-    paginationHelper.calculatePagination(options);
-  const { searchTerm, specialties, ...filterData } = filters;
+  // Merge filters and options into a single query object for the builder
+  const query = { ...filters, ...options };
+  const { specialties, ...filterData } = query;
 
-  const andConditions: Prisma.DoctorWhereInput[] = [];
-
-  if (searchTerm) {
-    andConditions.push({
-      OR: doctorSearchableFields.map((field) => ({
-        [field]: {
-          contains: searchTerm,
-          mode: "insensitive",
-        },
-      })),
-    });
+  // Initialize our Senior-Level PrismaQueryBuilder
+  // Prisma requires exact types. Since URL queries are strings, we manually cast numeric fields
+  if (filterData.appointmentFee) {
+    if (typeof filterData.appointmentFee === "object") {
+      // Range Filter: ?appointmentFee[lt]=500&appointmentFee[gt]=200
+      const feeFilter = filterData.appointmentFee as Record<string, unknown>;
+      Object.keys(feeFilter).forEach((key) => {
+        feeFilter[key] = Number(feeFilter[key]);
+      });
+    } else {
+      // Exact Match: ?appointmentFee=500
+      filterData.appointmentFee = Number(filterData.appointmentFee);
+    }
   }
 
+  const queryBuilder = new PrismaQueryBuilder(filterData)
+    .search(doctorSearchableFields)
+    .filter();
+
+  // Add custom relational filter (Prisma specific trick!)
   if (specialties && specialties.length > 0) {
-    // specialties is comma separated or array depending on the query
     const specialitiesArray = typeof specialties === 'string' ? specialties.split(',') : specialties;
-    
-    andConditions.push({
+    queryBuilder.addCondition({
       specialties: {
         some: {
           specialty: {
@@ -45,40 +52,14 @@ const getAllDoctors = async (
     });
   }
 
-  if (Object.keys(filterData).length > 0) {
-    andConditions.push({
-      AND: Object.keys(filterData).map((key) => {
-        let val = (filterData as any)[key];
-        
-        // Handle numeric fields dynamically if needed, e.g. appointmentFee
-        if (key === 'appointmentFee') {
-           val = Number(val);
-        }
-
-        return {
-          [key]: {
-            equals: val,
-          },
-        };
-      }),
-    });
-  }
-
   // Only get non-deleted doctors
-  andConditions.push({
-    isDeleted: false,
-  });
+  queryBuilder.addCondition({ isDeleted: false });
 
-  const whereConditions: Prisma.DoctorWhereInput =
-    andConditions.length > 0 ? { AND: andConditions } : {};
+  // Get the constructed options (where, skip, take, orderBy)
+  const queryOptions = queryBuilder.build();
 
   const result = await prisma.doctor.findMany({
-    where: whereConditions,
-    skip,
-    take: limit,
-    orderBy: {
-      [sortBy]: sortOrder,
-    },
+    ...queryOptions,
     include: {
       specialties: {
         include: {
@@ -89,15 +70,11 @@ const getAllDoctors = async (
   });
 
   const total = await prisma.doctor.count({
-    where: whereConditions,
+    where: queryOptions.where,
   });
 
   return {
-    meta: {
-      total,
-      page,
-      limit,
-    },
+    meta: queryBuilder.getMeta(total),
     data: result,
   };
 };

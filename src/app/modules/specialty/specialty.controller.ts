@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { SpecialityService } from "./specialty.service";
 import catchAsync from "../../../shared/catchAsync";
 import sendResponse from "../../../shared/sendResponse";
+import pick from "../../../shared/pick";
 
 
 const createSpecialty = catchAsync(async (req: Request, res: Response) => {
@@ -16,13 +17,17 @@ const createSpecialty = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllSpecialties = catchAsync(async (req: Request, res: Response) => {
-    const specialties = await SpecialityService.getAllSpecialties();
+    const filters = pick(req.query, ['searchTerm', 'title']);
+    const options = pick(req.query, ['limit', 'page', 'sortBy', 'sortOrder']);
+
+    const specialties = await SpecialityService.getAllSpecialties(filters, options);
 
     sendResponse(res, {
         statusCode: 200,
         success: true,
         message: "Specialties retrieved successfully",
-        data: specialties,
+        meta: specialties.meta,
+        data: specialties.data,
     });
 });
 

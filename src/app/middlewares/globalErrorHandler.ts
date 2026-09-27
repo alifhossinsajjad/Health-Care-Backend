@@ -19,6 +19,15 @@ const globalErrorHandler = (
     console.error("🔴 [GlobalErrorHandler]:", err.message);
   }
 
+  // Rollback: If an error occurs but a file was already uploaded to Cloudinary by Multer, delete it!
+  if (req.file && req.file.path) {
+    import("../../../src/config/cloudinary.config").then(({ deleteFileFromCloudinary }) => {
+      if (deleteFileFromCloudinary) {
+        deleteFileFromCloudinary(req.file!.path).catch(console.error);
+      }
+    });
+  }
+
   let statusCode = 500;
   let message = "Something went wrong!";
   let errorSources: TErrorSources = [
@@ -63,6 +72,15 @@ const globalErrorHandler = (
       {
         path: "",
         message: "The provided token is invalid.",
+      },
+    ];
+  } else if (err.name === "MulterError") {
+    statusCode = 400;
+    message = "File Upload Error";
+    errorSources = [
+      {
+        path: "",
+        message: err.message,
       },
     ];
   } else if (err instanceof ApiError) {
