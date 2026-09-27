@@ -7,7 +7,7 @@ model Specialty {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  doctorSpecialties DoctorSpacialty[]
+  doctorSpecialties DoctorSpecialty[]
 
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
@@ -17,7 +17,7 @@ model Specialty {
   @@map("specialties")
 }
 
-model DoctorSpacialty {
+model DoctorSpecialty {
   id String @id @default(uuid(7))
 
   doctorId    String

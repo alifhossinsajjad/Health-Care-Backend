@@ -1,24 +1,30 @@
 model Appointment {
-  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  patientId        String            
-  doctorId         String            
-  doctorScheduleId String            @unique @db.Uuid
-  videoCallingId   String
-  status           AppointmentStatus @default(SCHEDULED)
-  paymentStatus    PaymentStatus     @default(UNPAID)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+    id             String            @id @default(uuid(7))
+    videoCallingId String   @db.Uuid() @unique
+    status         AppointmentStatus @default(SCHEDULED)
+    paymentStatus  PaymentStatus     @default(UNPAID)
+    createdAt      DateTime          @default(now())
+    updatedAt      DateTime          @updatedAt
 
-  // Relations
-  patient        Patient         @relation(fields: [patientId], references: [id])
-  doctor         Doctor          @relation(fields: [doctorId], references: [id])
-  doctorSchedule DoctorSchedules @relation(fields: [doctorScheduleId], references: [id])
+    patientId String
+    patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
-  // One appointment can have one payment, review, prescription, and medical report
-  // payment          Payment? // Optional based on the task description, might need to create Payment model later if requested.
-  review        Review?
-  // prescription     Prescription? // Optional based on the task description
-  medicalReport MedicalReport?
+    doctorId String
+    doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
-  @@map("appointments")
+    scheduleId String
+    schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+    doctorSchedule DoctorSchedules? @relation(fields: [doctorId, scheduleId], references: [doctorId, scheduleId], onDelete: Cascade)
+
+    prescription Prescription?
+    review       Review?
+    payment      Payment?
+
+    @@unique([doctorId, scheduleId])
+    @@index([patientId])
+    @@index([doctorId])
+    @@index([scheduleId])
+    @@index([status])
+    @@map("appointments")
 }
