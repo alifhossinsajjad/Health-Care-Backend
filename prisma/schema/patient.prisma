@@ -17,6 +17,7 @@ model Patient {
   appointments      Appointment[]
   reviews           Review[]
   medicalReports    MedicalReport[]
+  prescriptions     Prescription[]
 
   // Indexes for query optimization
   @@index([email], name: "idx_patient_email")
