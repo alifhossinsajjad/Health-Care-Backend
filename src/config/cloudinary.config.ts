@@ -42,7 +42,7 @@ export const uploadFileToCloudinary = async (
             {
                 resource_type: "auto",
                 public_id: uniqueName, // FIX: Removed duplicate folder path since 'folder' is already specified below
-                folder : `ph-healthcare/${folder}`,
+                folder : `healthcare/${folder}`,
             },
             (error, result) => {
                 if(error){

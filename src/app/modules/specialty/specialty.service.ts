@@ -1,6 +1,8 @@
 import { Specialty } from "../../../../generated/prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../lib/prisma";
+import { IPaginationOptions } from "../../interfaces/pagination";
+import { PrismaQueryBuilder } from "../../../shared/PrismaQueryBuilder";
 
 const createSpeciality = async (payload: Specialty): Promise<Specialty> => {
   const specialty = await prisma.specialty.create({
@@ -9,13 +11,29 @@ const createSpeciality = async (payload: Specialty): Promise<Specialty> => {
   return specialty;
 };
 
-const getAllSpecialties = async (): Promise<Specialty[]> => {
+const getAllSpecialties = async (filters: any, options: IPaginationOptions) => {
+  const query = { ...filters, ...options };
+  
+  const queryBuilder = new PrismaQueryBuilder(query)
+    .search(["title"])
+    .filter();
+    
+  queryBuilder.addCondition({ isDeleted: false });
+
+  const queryOptions = queryBuilder.build();
+
   const specialties = await prisma.specialty.findMany({
-    where: {
-      isDeleted: false,
-    },
+    ...queryOptions,
   });
-  return specialties;
+
+  const total = await prisma.specialty.count({
+    where: queryOptions.where,
+  });
+
+  return {
+    meta: queryBuilder.getMeta(total),
+    data: specialties,
+  };
 };
 
 const updateSpecialty = async (id: string, payload: Partial<Specialty>): Promise<Specialty> => {
