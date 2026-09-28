@@ -5,6 +5,8 @@ import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../errors/ApiError";
 import { getAccessToken, getRefreshToken } from "../../utils/token";
 import { verifyToken } from "../../utils/jwt";
+import { IRequestUser } from "../../interfaces/requestUser.interface";
+import { Request } from "express";
 
 // In a real senior-level app, this interface might be inferred from the Zod Schema:
 // import { z } from "zod";
@@ -20,6 +22,11 @@ interface IRegisterPatientPayload {
 interface ILoginPayload {
   email: string;
   password: string;
+}
+
+interface IChangePasswordPayload {
+  oldPassword: string;
+  newPassword: string;
 }
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
@@ -179,7 +186,7 @@ const loginUser = async (payload: ILoginPayload) => {
   };
 };
 
-const getMe = async (user: any) => {
+const getMe = async (user: IRequestUser) => {
   const userInfo = await prisma.user.findUnique({
     where: {
       id: user.id,
@@ -268,7 +275,7 @@ const refreshToken = async (token: string) => {
   };
 };
 
-const changePassword = async (user: any, payload: any, req: any) => {
+const changePassword = async (user: IRequestUser, payload: IChangePasswordPayload, req: Request) => {
   const { oldPassword, newPassword } = payload;
 
   const sessionToken = req.cookies?.["better-auth.session_token"];

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Specialty } from "../../../../generated/prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../lib/prisma";
