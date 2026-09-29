@@ -112,16 +112,33 @@ const getScheduleById = async (id: string): Promise<Schedule | null> => {
 
 const updateSchedule = async (
   id: string,
-  payload: Partial<Schedule>,
+  payload: any,
 ): Promise<Schedule> => {
   const isExist = await prisma.schedule.findUnique({
     where: { id },
   });
   if (!isExist) throw new ApiError(404, "Schedule not found");
 
+  const isScheduleInUse = await prisma.doctorSchedules.findFirst({
+    where: { scheduleId: id },
+  });
+  if (isScheduleInUse) {
+    throw new ApiError(400, "Cannot update a schedule that has already been selected by a doctor.");
+  }
+
+  const updateData: any = {};
+  
+  if (payload.startDate && payload.startTime) {
+    updateData.startDateTime = new Date(`${payload.startDate}T${payload.startTime}:00.000Z`);
+  }
+  
+  if (payload.endDate && payload.endTime) {
+    updateData.endDateTime = new Date(`${payload.endDate}T${payload.endTime}:00.000Z`);
+  }
+
   const updatedSchedule = await prisma.schedule.update({
     where: { id },
-    data: payload,
+    data: updateData,
   });
   return updatedSchedule;
 };
@@ -131,6 +148,13 @@ const deleteSchedule = async (id: string): Promise<Schedule> => {
     where: { id },
   });
   if (!isExist) throw new ApiError(404, "Schedule not found");
+
+  const isScheduleInUse = await prisma.doctorSchedules.findFirst({
+    where: { scheduleId: id },
+  });
+  if (isScheduleInUse) {
+    throw new ApiError(400, "Cannot delete a schedule that is currently in use by a doctor.");
+  }
 
   // Soft delete or hard delete? Standard schedules without isDeleted might need hard delete
   const deletedSchedule = await prisma.schedule.delete({

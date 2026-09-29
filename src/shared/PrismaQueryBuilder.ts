@@ -48,7 +48,7 @@ export class PrismaQueryBuilder<T extends Record<string, unknown>> implements IQ
     if (Object.keys(queryObj).length > 0) {
       this.andConditions.push({
         AND: Object.keys(queryObj).map((key) => {
-          const val = queryObj[key];
+          let val = queryObj[key];
 
           // Smart Senior Hack: If the value is already an object (e.g., { lt: 500, gt: 200 }), 
           // it's a range filter from the URL. Pass it directly to Prisma!
@@ -56,6 +56,11 @@ export class PrismaQueryBuilder<T extends Record<string, unknown>> implements IQ
             return {
               [key]: val,
             };
+          }
+
+          // Convert string booleans to actual booleans for Prisma
+          if (val === "true" || val === "false") {
+            val = val === "true";
           }
 
           // Otherwise, it's a simple exact match

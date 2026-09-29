@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Invoice</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f7f6;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #0f766e, #0d9488);
+      color: #ffffff;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .content h2 {
+      color: #0f766e;
+      font-size: 20px;
+      margin-top: 0;
+    }
+    .invoice-details {
+      background-color: #f8fafc;
+      border-left: 4px solid #0d9488;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .invoice-details p {
+      margin: 8px 0;
+      font-size: 15px;
+    }
+    .invoice-details strong {
+      color: #1e293b;
+      display: inline-block;
+      width: 140px;
+    }
+    .btn-container {
+      text-align: center;
+      margin-top: 35px;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #0d9488;
+      color: #ffffff;
+      text-decoration: none;
+      padding: 12px 25px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+    .btn:hover {
+      background-color: #0f766e;
+    }
+    .footer {
+      background-color: #f1f5f9;
+      text-align: center;
+      padding: 20px;
+      font-size: 13px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Payment Successful</h1>
+    </div>
+    
+    <div class="content">
+      <h2>Hello <%= patientName %>,</h2>
+      <p>Thank you for choosing our healthcare services. Your payment has been successfully processed.</p>
+      
+      <div class="invoice-details">
+        <p><strong>Amount Paid:</strong> BDT <%= amount %></p>
+        <p><strong>Doctor:</strong> <%= doctorName %></p>
+        <p><strong>Appointment Date:</strong> <%= appointmentDate %></p>
+        <p><strong>Payment Date:</strong> <%= paymentDate %></p>
+        <p><strong>Transaction ID:</strong> <%= transactionId %></p>
+        <p><strong>Invoice ID:</strong> <%= invoiceId %></p>
+      </div>
+
+      <p style="margin-top: 25px; font-size: 15px;">Your appointment has been confirmed. You can download the official PDF invoice by clicking the button below:</p>
+
+      <div class="btn-container">
+        <a href="<%= invoiceUrl %>" class="btn" download>Download Invoice PDF</a>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>If you have any questions, please contact our support team.</p>
+      <p>&copy; <%= new Date().getFullYear() %> HealthCare System. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

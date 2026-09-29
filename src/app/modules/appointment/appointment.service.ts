@@ -23,7 +23,7 @@ const bookAppointment = async (
   user: IRequestUser,
 ) => {
   const patient = await prisma.patient.findUnique({
-    where: { email: user.email },
+    where: { userId: user.id },
   });
 
   if (!patient) {
@@ -152,7 +152,7 @@ const bookAppointmentWithPayLater = async (
   user: IRequestUser,
 ) => {
   const patient = await prisma.patient.findUnique({
-    where: { email: user.email },
+    where: { userId: user.id },
   });
 
   if (!patient) {
@@ -223,12 +223,12 @@ const bookAppointmentWithPayLater = async (
 // 3. Initiate Payment for Pay Later
 const initiatePayment = async (appointmentId: string, user: IRequestUser) => {
   const patient = await prisma.patient.findUnique({
-    where: { email: user.email },
+    where: { userId: user.id },
   });
 
   if (!patient) throw new ApiError(status.NOT_FOUND, "Patient not found");
 
-  const appointment = await prisma.appointment.findUnique({
+  const appointment = await prisma.appointment.findFirst({
     where: {
       id: appointmentId,
       patientId: patient.id,
@@ -284,13 +284,13 @@ const getMyAppointments = async (
 
   if (user.role === Role.PATIENT) {
     const patient = await prisma.patient.findUnique({
-      where: { email: user.email },
+      where: { userId: user.id },
     });
     if (!patient) throw new ApiError(status.NOT_FOUND, "Patient not found");
     userSpecificFilter = { patientId: patient.id };
   } else if (user.role === Role.DOCTOR) {
     const doctor = await prisma.doctor.findUnique({
-      where: { email: user.email },
+      where: { userId: user.id },
     });
     if (!doctor) throw new ApiError(status.NOT_FOUND, "Doctor not found");
     userSpecificFilter = { doctorId: doctor.id };
@@ -354,13 +354,13 @@ const getMySingleAppointment = async (
 
   if (user.role === Role.PATIENT) {
     const patient = await prisma.patient.findUnique({
-      where: { email: user.email },
+      where: { userId: user.id },
     });
     if (!patient) throw new ApiError(status.NOT_FOUND, "Patient not found");
     userSpecificFilter = { patientId: patient.id };
   } else if (user.role === Role.DOCTOR) {
     const doctor = await prisma.doctor.findUnique({
-      where: { email: user.email },
+      where: { userId: user.id },
     });
     if (!doctor) throw new ApiError(status.NOT_FOUND, "Doctor not found");
     userSpecificFilter = { doctorId: doctor.id };

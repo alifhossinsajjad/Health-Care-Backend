@@ -46,7 +46,7 @@ const authMiddleware = (...authRoles: Role[]) => {
     }
 
     // 4. Attach Decoded User to Request (using the index.d.ts type)
-    req.user = verifiedUser;
+    req.user = verifiedUser as JwtPayload & import("../interfaces/requestUser.interface").IRequestUser;
 
     next();
   });
