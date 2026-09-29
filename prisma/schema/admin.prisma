@@ -4,7 +4,7 @@ model Admin {
   name          String
   email         String    @unique
   profilePhoto  String?
-  contactNumber String
+  contactNumber String?
   isDeleted     Boolean   @default(false)
   deletedAt     DateTime?
   createdAt     DateTime  @default(now())

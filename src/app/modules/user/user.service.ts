@@ -57,60 +57,71 @@ const createDoctor = async (payload: ICreateDoctorPayload) => {
   const userId = authResponse.user.id;
 
   // 3. Now perform a Prisma transaction to update the user role and create Doctor & Specialties
-  const result = await prisma.$transaction(async (tx) => {
-    // Update user role to DOCTOR
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        role: "DOCTOR",
-      },
-    });
-
-    // Create the doctor profile
-    const createdDoctor = await tx.doctor.create({
-      data: {
-        userId,
-        name: doctor.name,
-        email: doctor.email,
-        contactNumber: doctor.contactNumber,
-        address: doctor.address,
-        gender: doctor.gender,
-        appointmentFee: doctor.appointmentFee,
-        qualification: doctor.qualification,
-        currentWorkingPlace: doctor.currentWorkingPlace,
-        designation: doctor.designation,
-        registrationNumber: `REG-${Date.now()}`, // You might want to get this from payload
-      },
-    });
-
-    // Create doctor specialties if provided
-    if (specialties && specialties.length > 0) {
-      const specialtyData = specialties.map((specialtyId) => ({
-        doctorId: createdDoctor.id,
-        specialtyId,
-      }));
-
-      await tx.doctorSpacialty.createMany({
-        data: specialtyData,
+  let finalDoctorData;
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Update user role to DOCTOR
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          role: "DOCTOR",
+        },
       });
-    }
 
-    return createdDoctor;
-  });
+      // Create the doctor profile
+      const createdDoctor = await tx.doctor.create({
+        data: {
+          userId,
+          name: doctor.name,
+          email: doctor.email,
+          contactNumber: doctor.contactNumber,
+          address: doctor.address,
+          gender: doctor.gender,
+          appointmentFee: doctor.appointmentFee,
+          qualification: doctor.qualification,
+          currentWorkingPlace: doctor.currentWorkingPlace,
+          designation: doctor.designation,
+          registrationNumber: `REG-${Date.now()}`, // You might want to get this from payload
+        },
+      });
 
-  // Fetch the created doctor with their specialties to return
-  const finalDoctorData = await prisma.doctor.findUnique({
-    where: {
-      id: result.id,
-    },
-    include: {
-      specialties: {
-        include: {
-          specialty: true,
+      // Create doctor specialties if provided
+      if (specialties && specialties.length > 0) {
+        const specialtyData = specialties.map((specialtyId) => ({
+          doctorId: createdDoctor.id,
+          specialtyId,
+        }));
+
+        await tx.doctorSpecialty.createMany({
+          data: specialtyData,
+        });
+      }
+
+      return createdDoctor;
+    });
+
+    // Fetch the created doctor with their specialties to return
+    finalDoctorData = await prisma.doctor.findUnique({
+      where: {
+        id: result.id,
+      },
+      include: {
+        specialties: {
+          include: {
+            specialty: true,
+          },
         },
       },
-    },
-  });
+    });
+  } catch (error: any) {
+    // ROLLBACK: If doctor creation fails, delete the user from DB!
+    console.error("🔥 Error during doctor creation:", error);
+    await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to create doctor profile, rolled back user creation."
+    );
+  }
 
   // Send the credentials email asynchronously
   sendEmail({

@@ -12,7 +12,7 @@ const router = Router();
 
 router.post(
   "/",
-  // authMiddleware(Role.ADMIN, Role.SUPER_ADMIN),
+  authMiddleware(Role.ADMIN, Role.SUPER_ADMIN),
   multerUpload.single("file"),
   parseFormData("icon"), // Clean and reusable!
   validateRequest(SpecialtyValidation.createSpecialty),

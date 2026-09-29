@@ -14,6 +14,7 @@
     "push": "prisma db push",
     "pull": "prisma db pull",
     "reset": "prisma migrate reset --force",
+    "stripe:webhook": "stripe listen --all-snapshot --forward-to localhost:5000/webhook",
     "lint": "eslint ."
   },
   "author": "",
@@ -38,8 +39,11 @@
     "ms": "^2.1.3",
     "multer": "^2.4.0",
     "multer-storage-cloudinary": "^4.0.0",
+    "node-cron": "^4.6.0",
     "nodemailer": "^10.0.10",
+    "pdfkit": "^0.20.2",
     "pg": "^8.23.0",
+    "stripe": "^22.6.2",
     "zod": "^4.6.2"
   },
   "devDependencies": {
@@ -49,6 +53,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/ms": "^2.1.0",
     "@types/node": "^26.5.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/pdfkit": "^0.17.6",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "prisma": "^7.10.0",
