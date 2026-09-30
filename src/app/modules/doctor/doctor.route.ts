@@ -13,6 +13,18 @@ router.get(
   DoctorController.getAllDoctors
 );
 
+import { multerUpload } from "../../../config/multer.config";
+import { parseJsonBody } from "../../middlewares/parseJsonBody";
+
+router.patch(
+  "/update-my-profile",
+  authMiddleware(Role.DOCTOR),
+  multerUpload.single("profilePhoto"),
+  parseJsonBody,
+  validateRequest(DoctorValidation.updateDoctor),
+  DoctorController.updateMyProfile
+);
+
 router.get(
   "/:id",
   DoctorController.getDoctorById

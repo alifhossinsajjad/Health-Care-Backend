@@ -1,10 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Prisma } from "../../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { IPaginationOptions } from "../../interfaces/pagination";
 import { paginationHelper } from "../../../shared/paginationHelper";
 import { adminSearchableFields } from "./admin.constant";
 import { ApiError } from "../../errors/ApiError";
+
+
 import httpStatus from "http-status";
+import { deleteFileFromCloudinary } from "../../../config/cloudinary.config";
 
 const getAllAdmins = async (filters: any, options: IPaginationOptions) => {
   const { limit, page, skip, sortBy, sortOrder } =
@@ -126,9 +130,58 @@ const deleteAdmin = async (id: string, user: any) => {
   return result;
 };
 
+const updateMyProfile = async (user: any, payload: any) => {
+  const adminData = await prisma.admin.findUniqueOrThrow({
+    where: { userId: user.id },
+  });
+
+  let oldProfilePhotoToDelete: string | null = null;
+  const adminPayload = payload;
+
+  await prisma.$transaction(async (tx) => {
+    if (
+      adminPayload.profilePhoto &&
+      adminData.profilePhoto &&
+      adminPayload.profilePhoto !== adminData.profilePhoto
+    ) {
+      oldProfilePhotoToDelete = adminData.profilePhoto;
+    }
+
+    await tx.admin.update({
+      where: { id: adminData.id },
+      data: adminPayload,
+    });
+
+    if (adminPayload.name || adminPayload.profilePhoto) {
+      await tx.user.update({
+        where: { id: adminData.userId },
+        data: {
+          ...(adminPayload.name && { name: adminPayload.name }),
+          ...(adminPayload.profilePhoto && { image: adminPayload.profilePhoto }),
+        },
+      });
+    }
+  });
+
+  if (oldProfilePhotoToDelete) {
+    try {
+      await deleteFileFromCloudinary(oldProfilePhotoToDelete);
+    } catch (error) {
+      console.error("Failed to delete old profile photo:", error);
+    }
+  }
+
+  const result = await prisma.admin.findUnique({
+    where: { id: adminData.id },
+  });
+
+  return result;
+};
+
 export const AdminService = {
   getAllAdmins,
   getAdminById,
   updateAdmin,
   deleteAdmin,
+  updateMyProfile,
 };

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { DoctorSchedules } from "../../../../generated/prisma/client";
 import { IPaginationOptions } from "../../interfaces/pagination";
 
@@ -183,7 +184,6 @@ const updateMyDoctorSchedule = async (
     }
 
     // 2. Filter out already existing schedules before creating new ones
-    let newScheduleIds = createIds;
     if (createIds.length > 0) {
       const existingSchedules = await tx.doctorSchedules.findMany({
         where: {
@@ -195,7 +195,7 @@ const updateMyDoctorSchedule = async (
       });
 
       const existingIds = existingSchedules.map((es) => es.scheduleId);
-      newScheduleIds = createIds.filter((id) => !existingIds.includes(id));
+      const newScheduleIds = createIds.filter((id) => !existingIds.includes(id));
 
       if (newScheduleIds.length > 0) {
         const doctorScheduleData = newScheduleIds.map((scheduleId) => ({

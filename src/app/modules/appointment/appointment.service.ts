@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   AppointmentStatus,
   PaymentStatus,
@@ -280,7 +281,7 @@ const getMyAppointments = async (
   filters: any,
   options: IPaginationOptions,
 ) => {
-  let userSpecificFilter = {};
+  let userSpecificFilter: Record<string, unknown>;
 
   if (user.role === Role.PATIENT) {
     const patient = await prisma.patient.findUnique({
@@ -350,7 +351,7 @@ const getMySingleAppointment = async (
   appointmentId: string,
   user: IRequestUser,
 ) => {
-  let userSpecificFilter = {};
+  let userSpecificFilter: Record<string, unknown> = {};
 
   if (user.role === Role.PATIENT) {
     const patient = await prisma.patient.findUnique({

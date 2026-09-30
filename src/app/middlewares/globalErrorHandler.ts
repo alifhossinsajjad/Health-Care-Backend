@@ -19,14 +19,14 @@ const globalErrorHandler = (
     console.error("🔴 [GlobalErrorHandler]:", err.message);
   }
 
-  // Rollback: If an error occurs but a file was already uploaded to Cloudinary by Multer, delete it!
-  if (req.file && req.file.path) {
-    import("../../../src/config/cloudinary.config").then(({ deleteFileFromCloudinary }) => {
-      if (deleteFileFromCloudinary) {
-        deleteFileFromCloudinary(req.file!.path).catch(console.error);
-      }
-    });
-  }
+  // Rollback: If an error occurs but files were already uploaded to Cloudinary by Multer, delete them!
+  import("../utils/deleteUploadedFiles")
+    .then(({ deleteUploadedFilesFromGlobalErrorHandler }) => {
+      deleteUploadedFilesFromGlobalErrorHandler(req);
+    })
+    .catch((err) =>
+      console.error("Failed to load delete uploaded files util", err),
+    );
 
   let statusCode = 500;
   let message = "Something went wrong!";

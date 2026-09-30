@@ -56,9 +56,21 @@ const deleteAdmin = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
+  const result = await AdminService.updateMyProfile(req.user, req.body);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Admin profile updated successfully",
+    data: result,
+  });
+});
+
 export const AdminController = {
   getAllAdmins,
   getAdminById,
   updateAdmin,
   deleteAdmin,
+  updateMyProfile,
 };

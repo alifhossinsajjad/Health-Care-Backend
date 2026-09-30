@@ -13,6 +13,18 @@ router.get(
   SuperAdminController.getAllSuperAdmins
 );
 
+import { multerUpload } from "../../../config/multer.config";
+import { parseJsonBody } from "../../middlewares/parseJsonBody";
+
+router.patch(
+  "/update-my-profile",
+  authMiddleware(Role.SUPER_ADMIN),
+  multerUpload.single("profilePhoto"),
+  parseJsonBody,
+  validateRequest(SuperAdminValidation.updateSuperAdmin),
+  SuperAdminController.updateMyProfile
+);
+
 router.get(
   "/:id",
   authMiddleware(Role.SUPER_ADMIN),
