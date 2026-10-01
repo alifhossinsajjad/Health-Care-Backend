@@ -400,7 +400,7 @@ const changeAppointmentStatus = async (
   if (!appointment)
     throw new ApiError(status.NOT_FOUND, "Appointment not found");
 
-  if (user.role === Role.DOCTOR && user.email !== appointment.doctor.email) {
+  if (user.role === Role.DOCTOR && user.id !== appointment.doctor.userId) {
     throw new ApiError(status.FORBIDDEN, "This is not your appointment");
   }
 
@@ -412,6 +412,63 @@ const changeAppointmentStatus = async (
   return updatedAppointment;
 };
 
+// 8. Update Appointment
+const updateAppointment = async (appointmentId: string, payload: any) => {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+  });
+
+  if (!appointment)
+    throw new ApiError(status.NOT_FOUND, "Appointment not found");
+
+  const updatedAppointment = await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: payload,
+  });
+
+  return updatedAppointment;
+};
+
+// 9. Delete Appointment
+const deleteAppointment = async (appointmentId: string) => {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+  });
+
+  if (!appointment)
+    throw new ApiError(status.NOT_FOUND, "Appointment not found");
+
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.payment.deleteMany({
+      where: { appointmentId },
+    });
+
+    await tx.prescription.deleteMany({
+        where: { appointmentId },
+    });
+
+    await tx.review.deleteMany({
+        where: { appointmentId },
+    });
+
+    const deletedAppointment = await tx.appointment.delete({
+      where: { id: appointmentId },
+    });
+
+    await tx.doctorSchedules.updateMany({
+      where: {
+          doctorId: appointment.doctorId,
+          scheduleId: appointment.scheduleId,
+      },
+      data: { isBooked: false },
+    });
+
+    return deletedAppointment;
+  });
+
+  return result;
+};
+
 export const AppointmentService = {
   bookAppointment,
   bookAppointmentWithPayLater,
@@ -420,4 +477,7 @@ export const AppointmentService = {
   getAllAppointments,
   getMySingleAppointment,
   changeAppointmentStatus,
+  updateAppointment,
+  deleteAppointment,
 };
+  

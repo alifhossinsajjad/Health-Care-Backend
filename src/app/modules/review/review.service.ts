@@ -14,7 +14,7 @@ import { Prisma } from "../../../../generated/prisma/client";
 const giveReview = async (user: IRequestUser, payload: ICreateReviewPayload) => {
   const patientData = await prisma.patient.findUniqueOrThrow({
     where: {
-      email: user.email,
+      userId: user.id,
     },
   });
 
@@ -140,12 +140,12 @@ const myReviews = async (user: IRequestUser, filters: any, options: IPaginationO
 
   if (user.role === Role.DOCTOR) {
     const doctorData = await prisma.doctor.findUniqueOrThrow({
-      where: { email: user.email },
+      where: { userId: user.id },
     });
     andConditions.push({ doctorId: doctorData.id });
   } else if (user.role === Role.PATIENT) {
     const patientData = await prisma.patient.findUniqueOrThrow({
-      where: { email: user.email },
+      where: { userId: user.id },
     });
     andConditions.push({ patientId: patientData.id });
   } else {
@@ -189,7 +189,7 @@ const updateReview = async (
 ) => {
   const patientData = await prisma.patient.findUniqueOrThrow({
     where: {
-      email: user.email,
+      userId: user.id,
     },
   });
 
@@ -240,7 +240,7 @@ const updateReview = async (
 const deleteReview = async (user: IRequestUser, reviewId: string) => {
   const patientData = await prisma.patient.findUniqueOrThrow({
     where: {
-      email: user.email,
+      userId: user.id,
     },
   });
 

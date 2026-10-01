@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import jwt, { Secret, SignOptions, VerifyOptions } from "jsonwebtoken";
 
 export const createToken = (
