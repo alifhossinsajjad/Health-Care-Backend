@@ -35,13 +35,14 @@ export const uploadFileToCloudinary = async (
         throw new ApiError(status.BAD_REQUEST, "File buffer and file name are required for upload");
     }
 
-    const { uniqueName, folder } = generateUniqueFileName(fileName);
+    const { uniqueName, folder, extension } = generateUniqueFileName(fileName);
+    const isPdf = extension === "pdf";
 
     return new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream(
             {
-                resource_type: "auto",
-                public_id: uniqueName, // FIX: Removed duplicate folder path since 'folder' is already specified below
+                resource_type: isPdf ? "raw" : "auto",
+                public_id: isPdf ? `${uniqueName}.pdf` : uniqueName, // Raw files need extension in public_id
                 folder : `healthcare/${folder}`,
             },
             (error, result) => {
@@ -57,16 +58,24 @@ export const uploadFileToCloudinary = async (
 export const deleteFileFromCloudinary = async (url : string) => {
 
     try {
-        const regex = /\/v\d+\/(.+?)(?:\.[a-zA-Z0-9]+)+$/;
+        const isRaw = url.includes("/raw/upload/");
+        const resourceType = isRaw ? "raw" : "image";
+        let publicId = "";
 
-        const match = url.match(regex);
+        if (isRaw) {
+            const regex = /\/v\d+\/(.+)$/;
+            const match = url.match(regex);
+            if (match && match[1]) publicId = match[1];
+        } else {
+            const regex = /\/v\d+\/(.+?)(?:\.[a-zA-Z0-9]+)+$/;
+            const match = url.match(regex);
+            if (match && match[1]) publicId = match[1];
+        }
 
-        if (match && match[1]) {
-            const publicId = match[1];
-
+        if (publicId) {
             await cloudinary.uploader.destroy(
                 publicId, {
-                resource_type: "image"
+                resource_type: resourceType
             }
             )
 
