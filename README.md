@@ -88,4 +88,13 @@ SUPER_ADMIN_CONTACT="01xxxxxxxx"
 
 ---
 
+## 📬 Postman Collection (API Testing)
+
+We have included a complete Postman collection to make testing the APIs extremely easy for any developer. 
+
+You can find the file named `Health-Care-Backend.postman_collection.json` in the root directory.
+Simply **import** this JSON file into your Postman workspace, and you will get access to all the pre-configured endpoints, organized by modules (like Admin, Auth, Doctor, Prescription, Stats, etc.)!
+
+---
+
 > *"Great software is not built in a day; it is forged through iterative refactoring, clean architecture, and the pursuit of a senior-level mindset."* 🚀
