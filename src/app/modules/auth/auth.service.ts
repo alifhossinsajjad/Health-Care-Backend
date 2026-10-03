@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from "http-status";
 import { Role, UserStatus } from "../../../../generated/prisma/client";
 import { auth } from "../../lib/auth";
@@ -477,6 +478,11 @@ const googleLoginSuccess = async (sessionToken: string) => {
     user
   };
 };
+
+
+
+
+
 
 export const AuthService = {
   registerPatient,

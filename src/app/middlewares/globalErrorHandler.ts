@@ -1,10 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { TErrorSources } from "../interfaces/error";
 import handleZodError from "../errors/handleZodError";
-import handlePrismaError from "../errors/handlePrismaError";
+
 import { Prisma } from "../../../generated/prisma/client";
 import { ApiError } from "../errors/ApiError";
+import { 
+  handlePrismaClientKnownRequestError, 
+  handlePrismaClientUnknownError, 
+  handlePrismaClientValidationError, 
+  handlerPrismaClientInitializationError, 
+  handlerPrismaClientRustPanicError 
+} from "../errors/handlePrismaError";
 
 const globalErrorHandler = (
   err: any,
@@ -19,14 +27,14 @@ const globalErrorHandler = (
     console.error("🔴 [GlobalErrorHandler]:", err.message);
   }
 
-  // Rollback: If an error occurs but a file was already uploaded to Cloudinary by Multer, delete it!
-  if (req.file && req.file.path) {
-    import("../../../src/config/cloudinary.config").then(({ deleteFileFromCloudinary }) => {
-      if (deleteFileFromCloudinary) {
-        deleteFileFromCloudinary(req.file!.path).catch(console.error);
-      }
-    });
-  }
+  // Rollback: If an error occurs but files were already uploaded to Cloudinary by Multer, delete them!
+  import("../utils/deleteUploadedFiles")
+    .then(({ deleteUploadedFilesFromGlobalErrorHandler }) => {
+      deleteUploadedFilesFromGlobalErrorHandler(req);
+    })
+    .catch((err) =>
+      console.error("Failed to load delete uploaded files util", err),
+    );
 
   let statusCode = 500;
   let message = "Something went wrong!";
@@ -43,19 +51,30 @@ const globalErrorHandler = (
     message = simplifiedError.message;
     errorSources = simplifiedError.errorSources;
   } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    const simplifiedError = handlePrismaError(err);
+    const simplifiedError = handlePrismaClientKnownRequestError(err);
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  } else if (err instanceof Prisma.PrismaClientUnknownRequestError) {
+    const simplifiedError = handlePrismaClientUnknownError(err);
     statusCode = simplifiedError.statusCode;
     message = simplifiedError.message;
     errorSources = simplifiedError.errorSources;
   } else if (err instanceof Prisma.PrismaClientValidationError) {
-    statusCode = 400;
-    message = "Validation Error";
-    errorSources = [
-      {
-        path: "",
-        message: "Invalid data provided in the request.",
-      },
-    ];
+    const simplifiedError = handlePrismaClientValidationError(err);
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  } else if (err instanceof Prisma.PrismaClientInitializationError) {
+    const simplifiedError = handlerPrismaClientInitializationError(err);
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  } else if (err instanceof Prisma.PrismaClientRustPanicError) {
+    const simplifiedError = handlerPrismaClientRustPanicError();
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
   } else if (err.name === "TokenExpiredError") {
     statusCode = 401;
     message = "Token has expired";

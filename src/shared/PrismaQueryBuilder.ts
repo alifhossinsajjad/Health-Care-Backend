@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IQueryBuilder } from "../app/interfaces/queryBuilder";
 import { paginationHelper } from "./paginationHelper";
 

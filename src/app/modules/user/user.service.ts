@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "../../lib/prisma";
 import { ICreateDoctorPayload, ICreateAdmin, ICreateSuperAdmin } from "./user.interface";
 import { ApiError } from "../../errors/ApiError";

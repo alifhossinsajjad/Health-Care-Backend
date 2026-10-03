@@ -141,6 +141,36 @@ const initiatePayment = catchAsync(async (req: Request, res: Response) => {
 
 
 
+const updateAppointment = catchAsync(async (req: Request, res: Response) => {
+  const appointmentId = req.params.id;
+  const payload = req.body;
+  
+  const updatedAppointment = await AppointmentService.updateAppointment(
+    appointmentId as string,
+    payload,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: status.OK,
+    message: "Appointment updated successfully",
+    data: updatedAppointment,
+  });
+});
+
+const deleteAppointment = catchAsync(async (req: Request, res: Response) => {
+  const appointmentId = req.params.id;
+  
+  await AppointmentService.deleteAppointment(appointmentId as string);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: status.OK,
+    message: "Appointment deleted successfully",
+    data: null,
+  });
+});
+
 export const AppointmentController = {
   bookAppointment,
   getMyAppointments,
@@ -149,4 +179,6 @@ export const AppointmentController = {
   getAllAppointments,
   bookAppointmentWithPayLater,
   initiatePayment,
+  updateAppointment,
+  deleteAppointment,
 };

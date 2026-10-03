@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Schedule } from "../../../../generated/prisma/client";
 import { ICreateSchedulePayload } from "./schedule.interface";
 import { prisma } from "../../lib/prisma";

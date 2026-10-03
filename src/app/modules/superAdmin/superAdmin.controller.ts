@@ -56,9 +56,21 @@ const deleteSuperAdmin = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
+  const result = await SuperAdminService.updateMyProfile(req.user, req.body);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Super Admin profile updated successfully",
+    data: result,
+  });
+});
+
 export const SuperAdminController = {
   getAllSuperAdmins,
   getSuperAdminById,
   updateSuperAdmin,
   deleteSuperAdmin,
+  updateMyProfile,
 };

@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Prisma } from "../../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { IPaginationOptions } from "../../interfaces/pagination";
 import { paginationHelper } from "../../../shared/paginationHelper";
 import { superAdminSearchableFields } from "./superAdmin.constant";
+import { deleteFileFromCloudinary } from "../../../config/cloudinary.config";
 
 const getAllSuperAdmins = async (filters: any, options: IPaginationOptions) => {
   const { limit, page, skip, sortBy, sortOrder } = paginationHelper.calculatePagination(options);
@@ -115,9 +117,58 @@ const deleteSuperAdmin = async (id: string) => {
   return result;
 };
 
+const updateMyProfile = async (user: any, payload: any) => {
+  const superAdminData = await prisma.superAdmin.findUniqueOrThrow({
+    where: { userId: user.id },
+  });
+
+  let oldProfilePhotoToDelete: string | null = null;
+  const superAdminPayload = payload;
+
+  await prisma.$transaction(async (tx) => {
+    if (
+      superAdminPayload.profilePhoto &&
+      superAdminData.profilePhoto &&
+      superAdminPayload.profilePhoto !== superAdminData.profilePhoto
+    ) {
+      oldProfilePhotoToDelete = superAdminData.profilePhoto;
+    }
+
+    await tx.superAdmin.update({
+      where: { id: superAdminData.id },
+      data: superAdminPayload,
+    });
+
+    if (superAdminPayload.name || superAdminPayload.profilePhoto) {
+      await tx.user.update({
+        where: { id: superAdminData.userId },
+        data: {
+          ...(superAdminPayload.name && { name: superAdminPayload.name }),
+          ...(superAdminPayload.profilePhoto && { image: superAdminPayload.profilePhoto }),
+        },
+      });
+    }
+  });
+
+  if (oldProfilePhotoToDelete) {
+    try {
+      await deleteFileFromCloudinary(oldProfilePhotoToDelete);
+    } catch (error) {
+      console.error("Failed to delete old profile photo:", error);
+    }
+  }
+
+  const result = await prisma.superAdmin.findUnique({
+    where: { id: superAdminData.id },
+  });
+
+  return result;
+};
+
 export const SuperAdminService = {
   getAllSuperAdmins,
   getSuperAdminById,
   updateSuperAdmin,
   deleteSuperAdmin,
+  updateMyProfile,
 };

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Your Prescription</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: #ffffff;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .info-box {
+            background-color: #f8fafc;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        .info-row {
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #7f8c8d;
+            display: inline-block;
+            width: 140px;
+        }
+        .instructions {
+            margin-top: 30px;
+        }
+        .instructions h3 {
+            color: #2c3e50;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .instructions p {
+            background-color: #fff9c4;
+            padding: 15px;
+            border-radius: 4px;
+            font-style: italic;
+            line-height: 1.6;
+        }
+        .action-container {
+            text-align: center;
+            margin-top: 40px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #95a5a6;
+            border-top: 1px solid #eeeeee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Your Prescription is Ready</h1>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">Hello <%= patientName %>,</div>
+            
+            <p style="line-height: 1.6; color: #555; margin-bottom: 25px;">
+                Dr. <%= doctorName %> has issued a new prescription following your recent appointment. 
+                You will find a PDF copy attached to this email.
+            </p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Doctor:</span>
+                    <span>Dr. <%= doctorName %></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Appointment:</span>
+                    <span><%= appointmentDate %></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Issued On:</span>
+                    <span><%= issuedDate %></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Next Follow-up:</span>
+                    <span style="font-weight: 600; color: #e74c3c;"><%= followUpDate %></span>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <h3>Doctor's Instructions</h3>
+                <p><%= instructions %></p>
+            </div>
+
+            <div class="action-container">
+                <a href="<%= pdfUrl %>" class="btn" style="color: white;">Download Prescription PDF</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated message from HealthCare Platform.</p>
+            <p>If you have any questions, please contact your doctor at <%= doctorEmail %>.</p>
+        </div>
+    </div>
+</body>
+</html>

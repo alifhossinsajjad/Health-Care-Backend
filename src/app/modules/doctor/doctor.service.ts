@@ -1,12 +1,14 @@
-import { Prisma } from "../../../../generated/prisma/client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { prisma } from "../../lib/prisma";
 import { IPaginationOptions } from "../../interfaces/pagination";
-import { paginationHelper } from "../../../shared/paginationHelper";
+
 import { doctorSearchableFields } from "./doctor.constant";
 import { ApiError } from "../../errors/ApiError";
 import httpStatus from "http-status";
 
 import { PrismaQueryBuilder } from "../../../shared/PrismaQueryBuilder";
+import { deleteFileFromCloudinary } from "../../../config/cloudinary.config";
 
 const getAllDoctors = async (
   filters: any,
@@ -173,9 +175,80 @@ const deleteDoctor = async (id: string) => {
   return result;
 };
 
+const updateMyProfile = async (user: any, payload: any) => {
+  const doctorData = await prisma.doctor.findUniqueOrThrow({
+    where: { userId: user.id },
+  });
+
+  let oldProfilePhotoToDelete: string | null = null;
+  const { specialties, ...doctorPayload } = payload;
+
+  await prisma.$transaction(async (tx) => {
+    // Check if new profile photo is provided and is different from the old one
+    if (
+      doctorPayload.profilePhoto &&
+      doctorData.profilePhoto &&
+      doctorPayload.profilePhoto !== doctorData.profilePhoto
+    ) {
+      oldProfilePhotoToDelete = doctorData.profilePhoto;
+    }
+
+    // Update Doctor table
+    await tx.doctor.update({
+      where: { id: doctorData.id },
+      data: {
+        ...doctorPayload,
+        // Specialties update using nested writes
+        ...(specialties &&
+          specialties.length > 0 && {
+            specialties: {
+              deleteMany: {},
+              create: specialties.map((specialtyId: string) => ({
+                specialtyId,
+              })),
+            },
+          }),
+      },
+    });
+
+    // Sync with User table if name or profilePhoto changes
+    if (doctorPayload.name || doctorPayload.profilePhoto) {
+      await tx.user.update({
+        where: { id: doctorData.userId },
+        data: {
+          ...(doctorPayload.name && { name: doctorPayload.name }),
+          ...(doctorPayload.profilePhoto && { image: doctorPayload.profilePhoto }),
+        },
+      });
+    }
+  });
+
+  // Delete the old photo from Cloudinary after successful transaction
+  if (oldProfilePhotoToDelete) {
+    try {
+      await deleteFileFromCloudinary(oldProfilePhotoToDelete);
+    } catch (error) {
+      console.error("Failed to delete old profile photo:", error);
+    }
+  }
+
+  // Return updated doctor
+  const result = await prisma.doctor.findUnique({
+    where: { id: doctorData.id },
+    include: {
+      specialties: {
+        include: { specialty: true },
+      },
+    },
+  });
+
+  return result;
+};
+
 export const DoctorService = {
   getAllDoctors,
   getDoctorById,
   updateDoctor,
   deleteDoctor,
+  updateMyProfile,
 };

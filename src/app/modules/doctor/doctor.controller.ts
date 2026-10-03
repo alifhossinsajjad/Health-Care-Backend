@@ -56,9 +56,21 @@ const deleteDoctor = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
+  const result = await DoctorService.updateMyProfile(req.user, req.body);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Doctor profile updated successfully",
+    data: result,
+  });
+});
+
 export const DoctorController = {
   getAllDoctors,
   getDoctorById,
   updateDoctor,
   deleteDoctor,
+  updateMyProfile,
 };
