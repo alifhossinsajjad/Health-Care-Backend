@@ -479,6 +479,11 @@ const googleLoginSuccess = async (sessionToken: string) => {
   };
 };
 
+
+
+
+
+
 export const AuthService = {
   registerPatient,
   loginUser,

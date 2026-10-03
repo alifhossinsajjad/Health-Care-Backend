@@ -3,9 +3,16 @@ import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { TErrorSources } from "../interfaces/error";
 import handleZodError from "../errors/handleZodError";
-import handlePrismaError from "../errors/handlePrismaError";
+
 import { Prisma } from "../../../generated/prisma/client";
 import { ApiError } from "../errors/ApiError";
+import { 
+  handlePrismaClientKnownRequestError, 
+  handlePrismaClientUnknownError, 
+  handlePrismaClientValidationError, 
+  handlerPrismaClientInitializationError, 
+  handlerPrismaClientRustPanicError 
+} from "../errors/handlePrismaError";
 
 const globalErrorHandler = (
   err: any,
@@ -44,19 +51,30 @@ const globalErrorHandler = (
     message = simplifiedError.message;
     errorSources = simplifiedError.errorSources;
   } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    const simplifiedError = handlePrismaError(err);
+    const simplifiedError = handlePrismaClientKnownRequestError(err);
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  } else if (err instanceof Prisma.PrismaClientUnknownRequestError) {
+    const simplifiedError = handlePrismaClientUnknownError(err);
     statusCode = simplifiedError.statusCode;
     message = simplifiedError.message;
     errorSources = simplifiedError.errorSources;
   } else if (err instanceof Prisma.PrismaClientValidationError) {
-    statusCode = 400;
-    message = "Validation Error";
-    errorSources = [
-      {
-        path: "",
-        message: "Invalid data provided in the request.",
-      },
-    ];
+    const simplifiedError = handlePrismaClientValidationError(err);
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  } else if (err instanceof Prisma.PrismaClientInitializationError) {
+    const simplifiedError = handlerPrismaClientInitializationError(err);
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
+  } else if (err instanceof Prisma.PrismaClientRustPanicError) {
+    const simplifiedError = handlerPrismaClientRustPanicError();
+    statusCode = simplifiedError.statusCode;
+    message = simplifiedError.message;
+    errorSources = simplifiedError.errorSources;
   } else if (err.name === "TokenExpiredError") {
     statusCode = 401;
     message = "Token has expired";

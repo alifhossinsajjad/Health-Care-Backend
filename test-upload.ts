@@ -1,0 +1,1 @@
+import { uploadFileToCloudinary } from './src/config/cloudinary.config'; async function test() { try { const fs = require('fs'); const result = await uploadFileToCloudinary(Buffer.from('hello pdf'), 'test.pdf'); console.log(result.secure_url); } catch(e) { console.error(e) } }; test();  
