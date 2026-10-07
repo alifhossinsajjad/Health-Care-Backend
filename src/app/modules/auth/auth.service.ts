@@ -56,12 +56,14 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
   });
 
   // Automatically trigger the OTP sending asynchronously so it doesn't block the API response (4s wait time)
-  auth.api.sendVerificationOTP({
-    body: {
-      email,
-      type: "email-verification"
-    }
-  }).catch(err => console.error("Failed to trigger OTP sending:", err));
+  auth.api
+    .sendVerificationOTP({
+      body: {
+        email,
+        type: "email-verification",
+      },
+    })
+    .catch((err) => console.error("Failed to trigger OTP sending:", err));
 
   if (!authData?.user) {
     throw new ApiError(
@@ -91,7 +93,8 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
     return {
       user: authData.user,
       patient: patientData,
-      message: "Please check your email to verify your account before logging in.",
+      message:
+        "Please check your email to verify your account before logging in.",
     };
   } catch (error: any) {
     console.error("🔥 Error during patient registration:", error);
@@ -151,15 +154,19 @@ const loginUser = async (payload: ILoginPayload) => {
   } catch (error: any) {
     if (!user.emailVerified) {
       // Auto-send OTP asynchronously if the user tries to login but email is unverified
-      auth.api.sendVerificationOTP({
-        body: {
-          email,
-          type: "email-verification"
-        }
-      }).catch(err => console.error("Failed to auto-send OTP on login:", err));
+      auth.api
+        .sendVerificationOTP({
+          body: {
+            email,
+            type: "email-verification",
+          },
+        })
+        .catch((err) =>
+          console.error("Failed to auto-send OTP on login:", err),
+        );
       throw new ApiError(
-        httpStatus.FORBIDDEN, 
-        "Your email is not verified. A new OTP has been sent to your email."
+        httpStatus.FORBIDDEN,
+        "Your email is not verified. A new OTP has been sent to your email.",
       );
     }
     throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password");
@@ -224,9 +231,9 @@ const getMe = async (user: IRequestUser) => {
         specialties: {
           include: {
             specialty: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
   } else if (userInfo.role === Role.PATIENT) {
     profileInfo = await prisma.patient.findUnique({
@@ -242,10 +249,13 @@ const refreshToken = async (token: string) => {
   try {
     decodedData = verifyToken<{ id: string; role: Role }>(
       token,
-      process.env.JWT_REFRESH_SECRET as string
+      process.env.JWT_REFRESH_SECRET as string,
     );
   } catch (error) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "Invalid or expired refresh token",
+    );
   }
 
   const { id } = decodedData;
@@ -276,12 +286,19 @@ const refreshToken = async (token: string) => {
   };
 };
 
-const changePassword = async (user: IRequestUser, payload: IChangePasswordPayload, req: Request) => {
+const changePassword = async (
+  user: IRequestUser,
+  payload: IChangePasswordPayload,
+  req: Request,
+) => {
   const { oldPassword, newPassword } = payload;
 
   const sessionToken = req.cookies?.["better-auth.session_token"];
   if (!sessionToken) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Session cookie is missing. Please login again.");
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "Session cookie is missing. Please login again.",
+    );
   }
 
   try {
@@ -301,7 +318,7 @@ const changePassword = async (user: IRequestUser, payload: IChangePasswordPayloa
     if (userData?.needsPasswordChange) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { needsPasswordChange: false }
+        data: { needsPasswordChange: false },
       });
     }
 
@@ -320,18 +337,18 @@ const changePassword = async (user: IRequestUser, payload: IChangePasswordPayloa
       accessToken,
       refreshToken,
     };
-
   } catch (error: any) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
-      error?.message || "Failed to change password. Please check your old password."
+      error?.message ||
+        "Failed to change password. Please check your old password.",
     );
   }
 };
 
 const resendVerificationEmail = async (payload: { email: string }) => {
   const { email } = payload;
-  
+
   const user = await prisma.user.findUnique({
     where: { email },
   });
@@ -346,23 +363,25 @@ const resendVerificationEmail = async (payload: { email: string }) => {
 
   try {
     // Send asynchronously so the API responds instantly
-    auth.api.sendVerificationOTP({
-      body: {
-        email,
-        type: "email-verification"
-      },
-    }).catch(err => console.error("Failed to resend OTP email:", err));
+    auth.api
+      .sendVerificationOTP({
+        body: {
+          email,
+          type: "email-verification",
+        },
+      })
+      .catch((err) => console.error("Failed to resend OTP email:", err));
   } catch (error: any) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      error?.message || "Failed to resend verification email"
+      error?.message || "Failed to resend verification email",
     );
   }
 };
 
 const verifyEmailWithOTP = async (payload: { email: string; otp: string }) => {
   const { email, otp } = payload;
-  
+
   try {
     const result = await auth.api.verifyEmailOTP({
       body: {
@@ -370,20 +389,29 @@ const verifyEmailWithOTP = async (payload: { email: string; otp: string }) => {
         otp,
       },
     });
-    
-    // better-auth throws an error if verification fails
+
     return result;
   } catch (error: any) {
+    const errorMessage = error?.message?.toLowerCase() || "";
+
+    if (errorMessage.includes("expire") || errorMessage.includes("timeout")) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        "Your OTP has expired. Please send a new OTP.",
+      );
+    }
+
+    // For invalid, not found, or any other error
     throw new ApiError(
       httpStatus.BAD_REQUEST,
-      error?.message || "Invalid or expired OTP"
+      "Invalid OTP. Please type the correct OTP.",
     );
   }
 };
 
 const forgotPassword = async (payload: { email: string }) => {
   const { email } = payload;
-  
+
   const user = await prisma.user.findUnique({
     where: { email },
   });
@@ -394,18 +422,26 @@ const forgotPassword = async (payload: { email: string }) => {
 
   try {
     // We send it asynchronously to not block the API response
-    auth.api.forgetPasswordEmailOTP({
-      body: { email }
-    }).catch(err => console.error("Failed to send forgot password OTP:", err));
+    auth.api
+      .forgetPasswordEmailOTP({
+        body: { email },
+      })
+      .catch((err) =>
+        console.error("Failed to send forgot password OTP:", err),
+      );
   } catch (error: any) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      error?.message || "Failed to process forgot password request"
+      error?.message || "Failed to process forgot password request",
     );
   }
 };
 
-const resetPassword = async (payload: { email: string; otp: string; newPassword: string }) => {
+const resetPassword = async (payload: {
+  email: string;
+  otp: string;
+  newPassword: string;
+}) => {
   const { email, otp, newPassword } = payload;
 
   try {
@@ -414,14 +450,23 @@ const resetPassword = async (payload: { email: string; otp: string; newPassword:
         email,
         otp,
         password: newPassword,
-      }
+      },
     });
 
     return result;
   } catch (error: any) {
+    const errorMessage = error?.message?.toLowerCase() || "";
+
+    if (errorMessage.includes("expire") || errorMessage.includes("timeout")) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        "Your OTP has expired. Please send a new OTP.",
+      );
+    }
+
     throw new ApiError(
       httpStatus.BAD_REQUEST,
-      error?.message || "Invalid or expired OTP"
+      "Invalid OTP. Please type the correct OTP.",
     );
   }
 };
@@ -447,7 +492,7 @@ const googleLoginSuccess = async (sessionToken: string) => {
   // it bypasses our custom registerPatient flow. We must create the Patient profile here if it doesn't exist!
   if (user.role === "PATIENT") {
     const isPatientExists = await prisma.patient.findUnique({
-      where: { userId: user.id }
+      where: { userId: user.id },
     });
 
     if (!isPatientExists) {
@@ -457,7 +502,7 @@ const googleLoginSuccess = async (sessionToken: string) => {
           name: user.name,
           email: user.email,
           contactNumber: "", // Provided by default since Google OAuth doesn't return phone numbers
-        }
+        },
       });
     }
   }
@@ -475,14 +520,9 @@ const googleLoginSuccess = async (sessionToken: string) => {
   return {
     accessToken,
     refreshToken,
-    user
+    user,
   };
 };
-
-
-
-
-
 
 export const AuthService = {
   registerPatient,
@@ -494,5 +534,5 @@ export const AuthService = {
   verifyEmailWithOTP,
   forgotPassword,
   resetPassword,
-  googleLoginSuccess
+  googleLoginSuccess,
 };
