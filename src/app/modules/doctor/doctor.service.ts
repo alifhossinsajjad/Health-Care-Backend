@@ -68,6 +68,11 @@ const getAllDoctors = async (
           specialty: true,
         },
       },
+      user: {
+        select: {
+          status: true,
+        }
+      }
     },
   });
 
@@ -93,6 +98,11 @@ const getDoctorById = async (id: string) => {
           specialty: true,
         },
       },
+      user: {
+        select: {
+          status: true,
+        }
+      }
     },
   });
   return result;

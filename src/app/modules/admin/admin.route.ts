@@ -27,6 +27,16 @@ router.patch(
   AdminController.updateMyProfile
 );
 
+router.patch("/change-user-status", 
+    authMiddleware(Role.SUPER_ADMIN, Role.ADMIN),
+    validateRequest(AdminValidation.changeUserStatus),
+    AdminController.changeUserStatus);
+    
+router.patch("/change-user-role",
+     authMiddleware(Role.SUPER_ADMIN),
+     validateRequest(AdminValidation.changeUserRole),
+     AdminController.changeUserRole);
+
 router.get(
   "/:id",
   authMiddleware(Role.SUPER_ADMIN, Role.ADMIN),
@@ -45,16 +55,5 @@ router.delete(
   authMiddleware(Role.SUPER_ADMIN),
   AdminController.deleteAdmin
 );
-
-
-router.patch("/change-user-status", 
-    authMiddleware(Role.SUPER_ADMIN, Role.ADMIN),
-    validateRequest(AdminValidation.changeUserStatus),
-    AdminController.changeUserStatus);
-    
-router.patch("/change-user-role",
-     authMiddleware(Role.SUPER_ADMIN),
-     validateRequest(AdminValidation.changeUserRole),
-     AdminController.changeUserRole);
 
 export const AdminRoutes = router;
