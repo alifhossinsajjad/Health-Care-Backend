@@ -9,6 +9,10 @@ export const doctorScheduleFilterableFields = [
   "createdAt",
   "updatedAt",
   "isBooked",
+  "startDate",
+  "endDate",
+  "startDateTime",
+  "endDateTime",
 ];
 
 export const doctorScheduleIncludeConfig: Prisma.DoctorSchedulesInclude = {

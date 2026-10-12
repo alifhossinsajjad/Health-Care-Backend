@@ -84,13 +84,42 @@ const createSchedule = async (
 };
 
 const getAllSchedules = async (filters: any, options: IPaginationOptions) => {
-  const query = { ...filters, ...options };
+  const { startDate, endDate, startDateTime, endDateTime, ...otherFilters } =
+    filters;
+  const query = { ...otherFilters, ...options };
   const queryBuilder = new PrismaQueryBuilder(query).filter();
+
+  // Support date range filtering for startDateTime (gte)
+  const startParam = startDate || startDateTime;
+  if (startParam) {
+    const fromDate = new Date(startParam as string);
+    if (!isNaN(fromDate.getTime())) {
+      queryBuilder.addCondition({
+        startDateTime: {
+          gte: fromDate,
+        },
+      });
+    }
+  }
+
+  // Support date range filtering for endDateTime (lte)
+  const endParam = endDate || endDateTime;
+  if (endParam) {
+    const toDate = new Date(endParam as string);
+    if (!isNaN(toDate.getTime())) {
+      queryBuilder.addCondition({
+        endDateTime: {
+          lte: toDate,
+        },
+      });
+    }
+  }
+
   const queryOptions = queryBuilder.build();
 
   const schedules = await prisma.schedule.findMany({
     ...queryOptions,
-    include: scheduleIncludeConfig
+    include: scheduleIncludeConfig,
   });
 
   const total = await prisma.schedule.count({
@@ -111,10 +140,7 @@ const getScheduleById = async (id: string): Promise<Schedule | null> => {
   return schedule;
 };
 
-const updateSchedule = async (
-  id: string,
-  payload: any,
-): Promise<Schedule> => {
+const updateSchedule = async (id: string, payload: any): Promise<Schedule> => {
   const isExist = await prisma.schedule.findUnique({
     where: { id },
   });
@@ -124,17 +150,24 @@ const updateSchedule = async (
     where: { scheduleId: id },
   });
   if (isScheduleInUse) {
-    throw new ApiError(400, "Cannot update a schedule that has already been selected by a doctor.");
+    throw new ApiError(
+      400,
+      "Cannot update a schedule that has already been selected by a doctor.",
+    );
   }
 
   const updateData: any = {};
-  
+
   if (payload.startDate && payload.startTime) {
-    updateData.startDateTime = new Date(`${payload.startDate}T${payload.startTime}:00.000Z`);
+    updateData.startDateTime = new Date(
+      `${payload.startDate}T${payload.startTime}:00.000Z`,
+    );
   }
-  
+
   if (payload.endDate && payload.endTime) {
-    updateData.endDateTime = new Date(`${payload.endDate}T${payload.endTime}:00.000Z`);
+    updateData.endDateTime = new Date(
+      `${payload.endDate}T${payload.endTime}:00.000Z`,
+    );
   }
 
   const updatedSchedule = await prisma.schedule.update({
@@ -154,7 +187,10 @@ const deleteSchedule = async (id: string): Promise<Schedule> => {
     where: { scheduleId: id },
   });
   if (isScheduleInUse) {
-    throw new ApiError(400, "Cannot delete a schedule that is currently in use by a doctor.");
+    throw new ApiError(
+      400,
+      "Cannot delete a schedule that is currently in use by a doctor.",
+    );
   }
 
   // Soft delete or hard delete? Standard schedules without isDeleted might need hard delete

@@ -1,6 +1,11 @@
 import { Prisma } from "../../../../generated/prisma/client";
 
-export const scheduleFilterableFields = ["startDateTime", "endDateTime"];
+export const scheduleFilterableFields = [
+  "startDateTime",
+  "endDateTime",
+  "startDate",
+  "endDate",
+];
 
 export const scheduleSearchableFields = ["startDateTime", "endDateTime"];
 

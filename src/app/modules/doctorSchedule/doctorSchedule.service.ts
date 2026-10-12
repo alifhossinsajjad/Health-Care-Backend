@@ -86,9 +86,42 @@ const getMyDoctorSchedules = async (
     throw new ApiError(status.NOT_FOUND, "Doctor not found");
   }
 
+  const { startDate, endDate, startDateTime, endDateTime, ...otherFilters } =
+    filters;
+
   // Add the doctorId to filters explicitly to ensure they only get their own
-  const query = { ...filters, ...options, doctorId: doctor.id };
+  const query = { ...otherFilters, ...options, doctorId: doctor.id };
   const queryBuilder = new PrismaQueryBuilder(query).filter();
+
+  // Support date range filtering for linked schedule
+  const startParam = startDate || startDateTime;
+  if (startParam) {
+    const fromDate = new Date(startParam as string);
+    if (!isNaN(fromDate.getTime())) {
+      queryBuilder.addCondition({
+        schedule: {
+          startDateTime: {
+            gte: fromDate,
+          },
+        },
+      });
+    }
+  }
+
+  const endParam = endDate || endDateTime;
+  if (endParam) {
+    const toDate = new Date(endParam as string);
+    if (!isNaN(toDate.getTime())) {
+      queryBuilder.addCondition({
+        schedule: {
+          endDateTime: {
+            lte: toDate,
+          },
+        },
+      });
+    }
+  }
+
   const queryOptions = queryBuilder.build();
 
   const doctorSchedules = await prisma.doctorSchedules.findMany({
@@ -110,7 +143,9 @@ const getAllDoctorSchedules = async (
   filters: any,
   options: IPaginationOptions
 ) => {
-  const query = { ...filters, ...options };
+  const { startDate, endDate, startDateTime, endDateTime, ...otherFilters } =
+    filters;
+  const query = { ...otherFilters, ...options };
   const { searchTerm, ...filterData } = query;
   const queryBuilder = new PrismaQueryBuilder(filterData).filter();
 
@@ -122,6 +157,35 @@ const getAllDoctorSchedules = async (
         { doctor: { designation: { contains: searchTerm, mode: "insensitive" } } },
       ],
     });
+  }
+
+  // Support date range filtering for linked schedule
+  const startParam = startDate || startDateTime;
+  if (startParam) {
+    const fromDate = new Date(startParam as string);
+    if (!isNaN(fromDate.getTime())) {
+      queryBuilder.addCondition({
+        schedule: {
+          startDateTime: {
+            gte: fromDate,
+          },
+        },
+      });
+    }
+  }
+
+  const endParam = endDate || endDateTime;
+  if (endParam) {
+    const toDate = new Date(endParam as string);
+    if (!isNaN(toDate.getTime())) {
+      queryBuilder.addCondition({
+        schedule: {
+          endDateTime: {
+            lte: toDate,
+          },
+        },
+      });
+    }
   }
 
   const queryOptions = queryBuilder.build();

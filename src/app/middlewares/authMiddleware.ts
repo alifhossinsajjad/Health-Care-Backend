@@ -9,7 +9,7 @@ import { Role } from "../../../generated/prisma/enums";
 
 const authMiddleware = (...authRoles: Role[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization;
+    const token = req.headers.authorization || (req.cookies && req.cookies.accessToken);
 
     // 1. Check if token exists
     if (!token) {
@@ -20,7 +20,7 @@ const authMiddleware = (...authRoles: Role[]) => {
     }
 
     // Usually token is sent as "Bearer eyJhbG..."
-    const extractedToken = token.replace("Bearer ", "").trim();
+    const extractedToken = token.startsWith("Bearer ") ? token.replace("Bearer ", "").trim() : token.trim();
 
     let verifiedUser: JwtPayload;
     try {
