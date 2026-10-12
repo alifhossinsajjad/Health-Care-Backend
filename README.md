@@ -35,9 +35,9 @@ Building a production-ready application comes with its hurdles. Here are some of
 - **The Issue:** TypeScript strictness clashed with Zod's enum validation, throwing obscure "Type 'string | undefined' is not assignable" errors inside our Prisma Error Handlers.
 - **The Fix:** We resolved this by correctly implementing `z.nativeEnum` with proper custom `errorMap` options and fixing potential `undefined` array bounds using Nullish Coalescing (`??`) and Optional Chaining (`?.`).
 
-### 4. Stripe Webhook Testing on Localhost (Overcoming CLI Restrictions)
-- **The Issue:** Testing asynchronous payment completion events locally requires exposing the backend webhook endpoint (`/webhook`) to Stripe. However, on many local environments (especially Windows), running the Stripe CLI fails with OS path restrictions, PowerShell script execution policies, or strict event forwarding syntax errors (`--all-snapshot`).
-- **The Fix:** We implemented a zero-install, friction-free webhook tunneling approach using **Localtunnel** with custom persistent subdomains (`npx localtunnel --port 5000 --subdomain <your-subdomain>`). This exposes a stable HTTPS endpoint (`https://<your-subdomain>.loca.lt/webhook`) directly consumable in the Stripe Developer Dashboard workbench, eliminating the dependency on local CLI installations.
+### 4. Frictionless Local Stripe Webhook Testing
+- **The Issue:** Testing asynchronous payment completion events locally requires forwarding Stripe events to `localhost:5000/webhook`. Developers often encounter browser login hurdles (`stripe login`), missing API key configurations (`You have not configured API keys yet`), or strict event-forwarding flags (`--all-snapshot`).
+- **The Fix:** We streamlined the process by directly feeding the development secret key via the `--api-key` flag (`stripe listen --api-key <YOUR_STRIPE_SECRET_KEY> --all-snapshot --forward-to localhost:5000/webhook`), bypassing interactive browser logins completely. We also documented zero-install tunneling alternatives (Localtunnel) as a fallback.
 
 ### 5. How We Could Have Done Things Better
 - In retrospect, we could have implemented **Test-Driven Development (TDD)** using Jest from day one to catch edge cases early. 
@@ -98,29 +98,40 @@ SUPER_ADMIN_CONTACT="01xxxxxxxx"
 
 ## 💳 Local Stripe Webhook Testing Guide
 
-When testing live card payments and automated booking confirmations locally, Stripe needs to send webhook events to your machine. Choose either of the two reliable methods below:
+When testing live card payments and automated booking confirmations locally, Stripe needs to forward webhook events to your machine. Choose either of the two approaches below:
 
-### Approach A: Using Localtunnel (Zero-Install, Recommended)
-Run the following command in a separate terminal:
+### Approach A: Using Stripe CLI with `--api-key` (Recommended & Most Reliable)
+You do **not** need to go through interactive browser login (`stripe login`). Simply pass your test secret key directly using the command below:
+
 ```bash
-npx localtunnel --port 5000 --subdomain shiny-doodles-relax
+stripe listen --api-key <YOUR_STRIPE_SECRET_KEY> --all-snapshot --forward-to localhost:5000/webhook
 ```
-*(Or use any unique custom subdomain of your choice).*
+> 🔒 **Security Note:** Replace `<YOUR_STRIPE_SECRET_KEY>` with your development secret key from `.env` (`sk_test_...`). Never commit real API keys to public version control!
 
-1. **Configure in Stripe Dashboard:** Go to **Stripe Dashboard > Developers > Webhooks** (or Workbench).
-2. **Add Endpoint:** Set Endpoint URL to `https://shiny-doodles-relax.loca.lt/webhook`.
-3. **Select Events:** Listen for `checkout.session.completed`.
-4. **Copy Signing Secret:** Click on **Signing secret** (`whsec_...`) and update your `.env`:
-   ```env
-   STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
+**Step-by-step Setup:**
+1. Open a new terminal and run the command above.
+2. The Stripe CLI will start a secure listener and output a session signing secret:
+   ```text
+   > Ready! You are using Stripe API Version [2025-11-17.clover].
+   > Your webhook signing secret is whsec_xxxxxxxxxxxxxxxxxxxxxxxx (^C to quit)
    ```
+3. Copy the generated `whsec_...` value and paste it into your `.env` file:
+   ```env
+   STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+4. Restart your backend server (`npm run dev`) so the new secret is active.
+5. **Session Tip:** If you close the terminal and re-run the command later, Stripe CLI may generate a fresh `whsec_...` session secret. Check the terminal output upon restart and update `STRIPE_WEBHOOK_SECRET` in `.env` if it changes.
 
-### Approach B: Using Stripe CLI
-If you have Stripe CLI installed, use the pre-configured script from `package.json`:
+---
+
+### Approach B: Using Localtunnel (Fallback Zero-Install Tunnel)
+If you cannot run the Stripe CLI on your operating system, you can expose your local port via a public tunnel:
 ```bash
-npm run stripe:webhook
+npx localtunnel --port 5000 --subdomain <your-custom-subdomain>
 ```
-*(Under the hood, this executes `stripe listen --all-snapshot --forward-to localhost:5000/webhook`)*
+1. Add the resulting URL (`https://<your-custom-subdomain>.loca.lt/webhook`) as an endpoint in **Stripe Dashboard > Developers > Webhooks**.
+2. Select the `checkout.session.completed` event.
+3. Reveal and copy the **Signing secret** (`whsec_...`) from the Stripe Dashboard into your `.env`.
 
 ---
 
