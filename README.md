@@ -35,7 +35,11 @@ Building a production-ready application comes with its hurdles. Here are some of
 - **The Issue:** TypeScript strictness clashed with Zod's enum validation, throwing obscure "Type 'string | undefined' is not assignable" errors inside our Prisma Error Handlers.
 - **The Fix:** We resolved this by correctly implementing `z.nativeEnum` with proper custom `errorMap` options and fixing potential `undefined` array bounds using Nullish Coalescing (`??`) and Optional Chaining (`?.`).
 
-### 4. How We Could Have Done Things Better
+### 4. Stripe Webhook Testing on Localhost (Overcoming CLI Restrictions)
+- **The Issue:** Testing asynchronous payment completion events locally requires exposing the backend webhook endpoint (`/webhook`) to Stripe. However, on many local environments (especially Windows), running the Stripe CLI fails with OS path restrictions, PowerShell script execution policies, or strict event forwarding syntax errors (`--all-snapshot`).
+- **The Fix:** We implemented a zero-install, friction-free webhook tunneling approach using **Localtunnel** with custom persistent subdomains (`npx localtunnel --port 5000 --subdomain <your-subdomain>`). This exposes a stable HTTPS endpoint (`https://<your-subdomain>.loca.lt/webhook`) directly consumable in the Stripe Developer Dashboard workbench, eliminating the dependency on local CLI installations.
+
+### 5. How We Could Have Done Things Better
 - In retrospect, we could have implemented **Test-Driven Development (TDD)** using Jest from day one to catch edge cases early. 
 - While our `Promise.all` optimization is great, integrating a caching layer (like Redis) earlier could have saved us some database roundtrips during the dashboard statistics development. 
 
@@ -80,11 +84,43 @@ CLOUDINARY_API_SECRET="your_api_secret"
 EMAIL_USER="your_email_address@gmail.com"
 EMAIL_PASS="your_app_password"
 
+# Stripe (Payments & Webhooks)
+STRIPE_SECRET_KEY="sk_test_your_stripe_secret_key"
+STRIPE_WEBHOOK_SECRET="whsec_your_webhook_signing_secret"
+
 # Default Super Admin Seed Data
 SUPER_ADMIN_EMAIL="superadmin@gmail.com"
 SUPER_ADMIN_PASSWORD="secure_password_here"
 SUPER_ADMIN_CONTACT="01xxxxxxxx"
 ```
+
+---
+
+## 💳 Local Stripe Webhook Testing Guide
+
+When testing live card payments and automated booking confirmations locally, Stripe needs to send webhook events to your machine. Choose either of the two reliable methods below:
+
+### Approach A: Using Localtunnel (Zero-Install, Recommended)
+Run the following command in a separate terminal:
+```bash
+npx localtunnel --port 5000 --subdomain shiny-doodles-relax
+```
+*(Or use any unique custom subdomain of your choice).*
+
+1. **Configure in Stripe Dashboard:** Go to **Stripe Dashboard > Developers > Webhooks** (or Workbench).
+2. **Add Endpoint:** Set Endpoint URL to `https://shiny-doodles-relax.loca.lt/webhook`.
+3. **Select Events:** Listen for `checkout.session.completed`.
+4. **Copy Signing Secret:** Click on **Signing secret** (`whsec_...`) and update your `.env`:
+   ```env
+   STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
+   ```
+
+### Approach B: Using Stripe CLI
+If you have Stripe CLI installed, use the pre-configured script from `package.json`:
+```bash
+npm run stripe:webhook
+```
+*(Under the hood, this executes `stripe listen --all-snapshot --forward-to localhost:5000/webhook`)*
 
 ---
 

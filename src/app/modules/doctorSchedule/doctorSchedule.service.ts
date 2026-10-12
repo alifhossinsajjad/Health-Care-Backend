@@ -111,7 +111,19 @@ const getAllDoctorSchedules = async (
   options: IPaginationOptions
 ) => {
   const query = { ...filters, ...options };
-  const queryBuilder = new PrismaQueryBuilder(query).filter();
+  const { searchTerm, ...filterData } = query;
+  const queryBuilder = new PrismaQueryBuilder(filterData).filter();
+
+  if (searchTerm) {
+    queryBuilder.addCondition({
+      OR: [
+        { doctor: { name: { contains: searchTerm, mode: "insensitive" } } },
+        { doctor: { email: { contains: searchTerm, mode: "insensitive" } } },
+        { doctor: { designation: { contains: searchTerm, mode: "insensitive" } } },
+      ],
+    });
+  }
+
   const queryOptions = queryBuilder.build();
 
   const doctorSchedules = await prisma.doctorSchedules.findMany({

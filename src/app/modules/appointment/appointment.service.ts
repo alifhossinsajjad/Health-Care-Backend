@@ -60,6 +60,29 @@ const bookAppointment = async (
     throw new ApiError(status.BAD_REQUEST, "Schedule is already booked");
   }
 
+  // Ensure no existing appointment record exists for this slot (guards unique constraint)
+  const existingAppointment = await prisma.appointment.findUnique({
+    where: {
+      doctorId_scheduleId: {
+        doctorId: doctor.id,
+        scheduleId: payload.scheduleId,
+      },
+    },
+  });
+
+  if (existingAppointment) {
+    if (existingAppointment.status === AppointmentStatus.CANCELED) {
+      await prisma.appointment.delete({
+        where: { id: existingAppointment.id },
+      });
+    } else {
+      throw new ApiError(
+        status.CONFLICT,
+        "An appointment already exists for this doctor schedule slot"
+      );
+    }
+  }
+
   const videoCallingId = crypto.randomUUID();
 
   const result = await prisma.$transaction(async (tx) => {
@@ -122,8 +145,8 @@ const bookAppointment = async (
         appointmentId: result.appointment.id,
         paymentId: result.payment.id,
       },
-      success_url: `${envVars.FRONTEND_URL}/dashboard/payment/payment-success`,
-      cancel_url: `${envVars.FRONTEND_URL}/dashboard/appointments`,
+      success_url: `${envVars.FRONTEND_URL}/dashboard/payment/payment-success?appointment_id=${result.appointment.id}&payment_id=${result.payment.id}`,
+      cancel_url: `${envVars.FRONTEND_URL}/dashboard/appointments?error=payment_cancelled`,
     });
   } catch (error) {
     // If Stripe fails, rollback the DB records manually to keep data consistent
@@ -179,6 +202,28 @@ const bookAppointmentWithPayLater = async (
 
   if (!doctorSchedule || doctorSchedule.isBooked) {
     throw new ApiError(status.BAD_REQUEST, "Schedule is not available");
+  }
+
+  const existingAppointment = await prisma.appointment.findUnique({
+    where: {
+      doctorId_scheduleId: {
+        doctorId: doctor.id,
+        scheduleId: payload.scheduleId,
+      },
+    },
+  });
+
+  if (existingAppointment) {
+    if (existingAppointment.status === AppointmentStatus.CANCELED) {
+      await prisma.appointment.delete({
+        where: { id: existingAppointment.id },
+      });
+    } else {
+      throw new ApiError(
+        status.CONFLICT,
+        "An appointment already exists for this doctor schedule slot"
+      );
+    }
   }
 
   const videoCallingId = crypto.randomUUID();
@@ -269,7 +314,7 @@ const initiatePayment = async (appointmentId: string, user: IRequestUser) => {
       paymentId: appointment.payment.id,
     },
     success_url: `${envVars.FRONTEND_URL}/dashboard/payment/payment-success?appointment_id=${appointment.id}&payment_id=${appointment.payment.id}`,
-    cancel_url: `${envVars.FRONTEND_URL}/dashboard/appointments?error=payment_cancelled`,
+    cancel_url: `${envVars.FRONTEND_URL}/dashboard/payment/cancel?appointment_id=${appointment.id}`,
   });
 
   return { paymentUrl: session.url };
