@@ -32,3 +32,8 @@ coverage/
 *.sqlite3
 *.db
 *.db-journal
+
+# Docker
+docker-compose.override.yml
+.docker/
+
