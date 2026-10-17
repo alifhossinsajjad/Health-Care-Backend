@@ -37,6 +37,25 @@ router.patch("/change-user-role",
      validateRequest(AdminValidation.changeUserRole),
      AdminController.changeUserRole);
 
+// Request Logs Monitoring Endpoint (For SUPER_ADMIN & ADMIN)
+router.get(
+  "/request-logs",
+  authMiddleware(Role.SUPER_ADMIN, Role.ADMIN),
+  AdminController.getRequestLogs
+);
+
+router.delete(
+  "/request-logs",
+  authMiddleware(Role.SUPER_ADMIN),
+  AdminController.clearRequestLogs
+);
+
+router.delete(
+  "/request-logs/:id",
+  authMiddleware(Role.SUPER_ADMIN),
+  AdminController.deleteSingleRequestLog
+);
+
 router.get(
   "/:id",
   authMiddleware(Role.SUPER_ADMIN, Role.ADMIN),

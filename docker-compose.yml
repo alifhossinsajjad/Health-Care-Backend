@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  # ==============================================================================
+  # 1. Main Healthcare Backend API Service
+  # ==============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthcare_api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+    volumes:
+      # Named persistent volume: request logs survive container restarts and rebuilds!
+      - healthcare_logs:/app/logs
+    networks:
+      - healthcare_network
+    depends_on:
+      - redis
+
+  # ==============================================================================
+  # 2. Redis Cache & Real-Time Adapter (For WebSockets, WebRTC Signaling & Queues)
+  # ==============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: healthcare_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      # Redis persistence volume
+      - healthcare_redis_data:/data
+    networks:
+      - healthcare_network
+    command: ["redis-server", "--appendonly", "yes"]
+
+# ==============================================================================
+# Persistent Docker Volumes (Independent of Container Lifecycle)
+# ==============================================================================
+volumes:
+  healthcare_logs:
+    name: healthcare_logs
+    driver: local
+  healthcare_redis_data:
+    name: healthcare_redis_data
+    driver: local
+
+# ==============================================================================
+# Isolated Internal Network for Inter-Container Communication
+# ==============================================================================
+networks:
+  healthcare_network:
+    name: healthcare_network
+    driver: bridge
