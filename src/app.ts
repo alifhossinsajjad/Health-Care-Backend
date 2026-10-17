@@ -10,11 +10,15 @@ import cors from "cors";
 import { envVars } from "./config/env";
 import { PaymentController } from "./app/modules/payment/payment.controller";
 import { scheduleAutoCancelUnpaidAppointments } from "./app/modules/appointment/appointment.cron";
+import { requestLogger } from "./app/middlewares/requestLogger";
 
 const app: Application = express();
 
 app.set("view engine", "ejs");
 app.set("views", path.resolve(process.cwd(), `src/app/templates`));
+
+// 1. Senior-level Request Logger (logs all incoming HTTP requests)
+app.use(requestLogger);
 
 app.post(
   "/webhook",

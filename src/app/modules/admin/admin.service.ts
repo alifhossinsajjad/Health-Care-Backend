@@ -11,6 +11,11 @@ import httpStatus from "http-status";
 import { deleteFileFromCloudinary } from "../../../config/cloudinary.config";
 import { Role, UserStatus } from "../../../../generated/prisma/enums";
 import { IRequestUser } from "../../interfaces/requestUser.interface";
+import {
+  getStoredRequestLogs,
+  clearStoredRequestLogs,
+  deleteStoredRequestLogById,
+} from "../../middlewares/requestLogger";
 
 const getAllAdmins = async (filters: any, options: IPaginationOptions) => {
   const { limit, page, skip, sortBy, sortOrder } =
@@ -241,6 +246,28 @@ const changeUserRole = async (user: IRequestUser, payload: { userId: string; rol
 
 
 
+const getRequestLogs = (query?: {
+  limit?: string | number;
+  method?: string;
+  statusCode?: string | number;
+  search?: string;
+}) => {
+  return getStoredRequestLogs(query);
+};
+
+const clearRequestLogs = () => {
+  clearStoredRequestLogs();
+  return { message: "Request logs cleared successfully" };
+};
+
+const deleteSingleRequestLog = (id: string) => {
+  const isDeleted = deleteStoredRequestLogById(id);
+  if (!isDeleted) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Log entry not found");
+  }
+  return { message: `Log entry ${id} deleted successfully` };
+};
+
 export const AdminService = {
   getAllAdmins,
   getAdminById,
@@ -249,4 +276,7 @@ export const AdminService = {
   updateMyProfile,
   changeUserStatus,
   changeUserRole,
+  getRequestLogs,
+  clearRequestLogs,
+  deleteSingleRequestLog,
 };
