@@ -1,12 +1,21 @@
-# 🏥 Healthcare Application Backend (Phase 1)
+# 🏥 Healthcare Telemedicine Application — Production Backend Architecture
 
-Welcome to the **Healthcare Application Backend**! This repository serves as the core foundation for a production-grade, scalable, and highly secure telemedicine platform connecting doctors and patients seamlessly.
+[![Healthcare Backend CI](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/ci.yml/badge.svg)](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/ci.yml)
+[![Healthcare Backend CD](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/deploy.yml/badge.svg)](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/deploy.yml)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-009639?style=flat&logo=nginx&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![NodeJS](https://img.shields.io/badge/Node.js-5FA04E?style=flat&logo=nodedotjs&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)
+
+Welcome to the **Healthcare Application Backend**! A high-performance, enterprise-grade, horizontally scalable telemedicine backend engineered with **Node.js, Express, TypeScript, Prisma ORM, Redis, BullMQ, Docker Compose, and Nginx**.
 
 ---
 
-## 🚀 Phase 1: Core Foundation (What We Built So Far)
+## 🏗️ System Architecture & Infrastructure
 
-During Phase 1, we established a rock-solid, scalable architecture using **Node.js, Express, TypeScript, and Prisma ORM**. Here is a high-level overview of our achievements:
+Our platform is engineered as a **Stateless, Scalable, and Resilient Micro-monolith** designed to handle heavy telemedicine traffic, real-time appointment bookings, and asynchronous financial workflows with zero downtime.
 
 - **Robust Database Modeling:** Designed complex relational schemas using PostgreSQL and Prisma, managing relationships between Users, Doctors, Patients, Appointments, and Prescriptions.
 - **Authentication & Authorization:** Implemented role-based access control (RBAC) with secure JWT-based authentication for `SUPER_ADMIN`, `ADMIN`, `DOCTOR`, and `PATIENT`.
@@ -96,7 +105,7 @@ SUPER_ADMIN_CONTACT="01xxxxxxxx"
 
 ---
 
-## 💳 Local Stripe Webhook Testing Guide
+## ⚡ Core Engineering & Production Features
 
 When testing live card payments and automated booking confirmations locally, Stripe needs to forward webhook events to your machine. Choose either of the two approaches below:
 
@@ -135,13 +144,62 @@ npx localtunnel --port 5000 --subdomain <your-custom-subdomain>
 
 ---
 
-## 📬 Postman Collection (API Testing)
+## 🧠 Why Horizontal Scaling? (The Architectural "Why")
 
-We have included a complete Postman collection to make testing the APIs extremely easy for any developer. 
+### 1. Conquering the Node.js Single-Thread Constraint
+Node.js runs its JavaScript execution on a single event-loop thread. Even on an 8-core CPU server, a single Node.js instance can only utilize **one CPU core (~12.5% CPU utilization)**. 
+By horizontally scaling into 3 or more replicas (`api=3`), our cluster utilizes multiple CPU cores in parallel, tripling the concurrent request handling capacity.
 
-You can find the file named `Health-Care-Backend.postman_collection.json` in the root directory.
-Simply **import** this JSON file into your Postman workspace, and you will get access to all the pre-configured endpoints, organized by modules (like Admin, Auth, Doctor, Prescription, Stats, etc.)!
+### 2. Zero-Downtime High Availability (HA)
+In a single-instance architecture, if an unhandled fatal error or memory spike causes the process to restart, all in-flight user requests drop.
+In our 3-replica cluster behind Nginx (`least_conn` + `max_fails=3`):
+* If `api-2` crashes or restarts, Nginx automatically detects the failure in milliseconds and routes 100% of incoming traffic to `api-1` and `api-3`.
+* The end-user **never experiences an outage or 502 Bad Gateway**.
+
+### 3. How Nginx Manages Dynamic Scaling Without Port Collisions
+* In traditional setups, mapping `5000:5000` prevents running more than 1 container due to host port binding conflicts.
+* We solved this by using **`expose: 5000`** inside our internal Docker bridge network (`healthcare_network`).
+* Only Nginx binds to the public host **Port 80**.
+* When Docker scales `api=3`, Docker's internal DNS automatically load balances the service name `http://api:5000` to all running container IPs, allowing unlimited seamless scaling!
 
 ---
 
-> *"Great software is not built in a day; it is forged through iterative refactoring, clean architecture, and the pursuit of a senior-level mindset."* 🚀
+## 🚀 Continuous Integration & Continuous Deployment (CI/CD)
+
+The repository implements an automated enterprise-grade CI/CD pipeline using **GitHub Actions**:
+
+```mermaid
+flowchart LR
+    A["git push / PR"] --> B["Stage 1: CI Pipeline"]
+    subgraph CI["Continuous Integration"]
+        B --> C["ESLint Code Audit"]
+        B --> D["TypeScript Type Check"]
+        B --> E["Prisma Schema Validation"]
+        B --> F["Docker Multi-Stage Build"]
+    end
+    CI --> G["Stage 2: CD Pipeline (Main Branch)"]
+    subgraph CD["Continuous Deployment"]
+        G --> H["SSH Handshake to Linux VPS"]
+        H --> I["Git Pull Latest Code"]
+        I --> J["docker compose up -d --scale api=3"]
+        J --> K["Health Probe (/nginx-health)"]
+    end
+```
+
+### GitHub Secrets for Deployment
+To enable auto-deployment when provisioning your Linux VPS (e.g., DigitalOcean Droplet), configure the following repository secrets under **Settings > Secrets and variables > Actions**:
+
+| Secret Key | Description | Example |
+| :--- | :--- | :--- |
+| `VPS_HOST` | Public IPv4 address of the Linux VPS | `159.65.120.45` |
+| `VPS_USER` | SSH Username (defaults to `root`) | `root` |
+| `VPS_SSH_KEY` | Private SSH key (PEM / OpenSSH format) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| `VPS_PORT` | SSH Port (optional, defaults to 22) | `22` |
+
+---
+
+## 🌟 Upcoming Roadmap
+- [x] **Automated GitHub Actions CI/CD:** Auto-testing & deployment pipeline.
+- [ ] **Socket.io + Redis Adapter:** Distributed real-time chat between patients and doctors.
+- [ ] **WebRTC Video Consultations:** Peer-to-peer live telemedicine video calling.
+- [ ] **AI / RAG Integration:** Automatic prescription drafting and lab test report summarizer.

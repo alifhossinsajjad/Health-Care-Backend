@@ -96,6 +96,42 @@ const changeUserRole = catchAsync(
     }
 );
 
+const getRequestLogs = catchAsync(async (req: Request, res: Response) => {
+  const filters = pick(req.query, ["limit", "method", "statusCode", "search"]);
+  const result = AdminService.getRequestLogs(filters);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Request logs retrieved successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
+const clearRequestLogs = catchAsync(async (req: Request, res: Response) => {
+  const result = AdminService.clearRequestLogs();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: result.message,
+    data: null,
+  });
+});
+
+const deleteSingleRequestLog = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = AdminService.deleteSingleRequestLog(id as string);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: result.message,
+    data: null,
+  });
+});
+
 export const AdminController = {
   getAllAdmins,
   getAdminById,
@@ -103,5 +139,8 @@ export const AdminController = {
   deleteAdmin,
   updateMyProfile,
   changeUserStatus,
-  changeUserRole
+  changeUserRole,
+  getRequestLogs,
+  clearRequestLogs,
+  deleteSingleRequestLog,
 };

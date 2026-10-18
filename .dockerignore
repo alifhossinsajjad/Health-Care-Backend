@@ -1,0 +1,36 @@
+# Dependency directories
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+logs
+
+# Git repository
+.git
+.gitignore
+
+# Environment files (Never bake credentials into image)
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+dist
+
+# Editor & OS metadata
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Documentation & Postman collections
+README.md
+*.postman_collection.json
+.postman
+
+# Docker files
+Dockerfile
+.dockerignore

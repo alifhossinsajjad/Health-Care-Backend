@@ -41,9 +41,15 @@ export const sendEmail = async ({ to, subject, templateName, templateData, attac
       subject,
       html,
       attachments: attachments?.map((attachment) => {
+        const content =
+          typeof attachment.content === "string" &&
+          !attachment.content.startsWith("http") &&
+          !attachment.content.includes("\n")
+            ? Buffer.from(attachment.content, "base64")
+            : attachment.content;
         return {
           filename: attachment.filename,
-          content: attachment.content,
+          content,
           contentType: attachment.contentType,
         };
       }),
@@ -53,6 +59,37 @@ export const sendEmail = async ({ to, subject, templateName, templateData, attac
     return info;
   } catch (error) {
     console.error("Error sending email: ", error);
-    throw new Error("Could not send email.");
+    throw new Error("Could not send email.", { cause: error });
   }
+};
+
+/**
+ * Non-blocking asynchronous email dispatch via BullMQ
+ * Returns immediately in < 5ms and executes in the background with auto-retries
+ */
+export const queueEmail = async ({
+  to,
+  subject,
+  templateName,
+  templateData,
+  attachments,
+}: IEmailOptions) => {
+  const { addEmailJob } = await import("../queues/email.queue");
+  return await addEmailJob({
+    to,
+    subject,
+    templateName,
+    templateData,
+    ...(attachments
+      ? {
+          attachments: attachments.map((a) => ({
+            filename: a.filename,
+            content: Buffer.isBuffer(a.content)
+              ? a.content.toString("base64")
+              : String(a.content),
+            contentType: a.contentType,
+          })),
+        }
+      : {}),
+  });
 };

@@ -7,6 +7,7 @@ import { Role } from "../../../../generated/prisma/enums";
 
 import { multerUpload } from "../../../config/multer.config";
 import { parseJsonBody } from "../../middlewares/parseJsonBody";
+import { QueueDashboardRoutes } from "./queueDashboard.route";
 
 const router = express.Router();
 
@@ -36,6 +37,28 @@ router.patch("/change-user-role",
      authMiddleware(Role.SUPER_ADMIN),
      validateRequest(AdminValidation.changeUserRole),
      AdminController.changeUserRole);
+
+// Request Logs Monitoring Endpoint (For SUPER_ADMIN & ADMIN)
+router.get(
+  "/request-logs",
+  authMiddleware(Role.SUPER_ADMIN, Role.ADMIN),
+  AdminController.getRequestLogs
+);
+
+router.delete(
+  "/request-logs",
+  authMiddleware(Role.SUPER_ADMIN),
+  AdminController.clearRequestLogs
+);
+
+router.delete(
+  "/request-logs/:id",
+  authMiddleware(Role.SUPER_ADMIN),
+  AdminController.deleteSingleRequestLog
+);
+
+// Visual BullMQ Queue Dashboard (For SUPER_ADMIN)
+router.use("/queues", QueueDashboardRoutes);
 
 router.get(
   "/:id",
