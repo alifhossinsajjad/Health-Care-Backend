@@ -1,34 +1,60 @@
 # ==============================================================================
-# Production Dockerfile for Healthcare Backend (Node.js + TypeScript + Prisma)
+# Enterprise Multi-Stage Production Dockerfile (HIPAA & SOC2 Compliant)
+# Healthcare Telemedicine Backend Architecture
 # ==============================================================================
 
-# 1. Base Image: Lightweight Node.js 22 on Alpine Linux
-FROM node:22-alpine
-
-# 2. Install essential system dependencies (openssl & libc6-compat are required for Prisma Engine on Alpine)
+# ----------------- STAGE 1: Dependency Resolver & Cache -----------------
+FROM node:22-alpine AS deps
 RUN apk add --no-cache openssl libc6-compat
-
-# 3. Set Working Directory inside the container
 WORKDIR /app
 
-# 4. Copy dependency and Prisma schema manifests first (Leverages Docker Layer Caching)
-COPY package*.json ./
-COPY prisma.config.ts ./
+# Copy dependency manifests and Prisma configuration
+COPY package*.json prisma.config.ts ./
 COPY prisma ./prisma/
 
-# 5. Install dependencies and generate Prisma Client (Generated to ./generated/prisma)
+# Clean installation of dependencies and Prisma Client generation
 RUN npm install --legacy-peer-deps
 RUN npx prisma generate
 
-# 6. Copy remaining application source code & view templates
-COPY . .
+# ----------------- STAGE 2: Production Runner (Non-Root & Secure) -----------------
+FROM node:22-alpine AS runner
 
-# 7. Configure runtime environment
+# Install essential runtime utilities:
+# - openssl & libc6-compat: Required by Prisma Engine on Alpine Linux
+# - tini: Lightweight init system to properly handle Linux signals (SIGTERM/SIGINT) for PID 1
+# - wget: Used for automated container healthcheck probes
+RUN apk add --no-cache openssl libc6-compat tini wget
+
+WORKDIR /app
+
+# Enterprise Security Rule: Run as unprivileged non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 -G nodejs nodejs
+
+# Copy dependencies and generated artifacts with non-root ownership (Instant, zero runtime delay)
+COPY --chown=nodejs:nodejs --from=deps /app/node_modules ./node_modules
+COPY --chown=nodejs:nodejs --from=deps /app/generated ./generated
+COPY --chown=nodejs:nodejs --from=deps /app/package*.json ./
+COPY --chown=nodejs:nodejs --from=deps /app/prisma.config.ts ./
+COPY --chown=nodejs:nodejs --from=deps /app/prisma ./prisma
+
+# Copy application source code and TypeScript configuration with non-root ownership
+COPY --chown=nodejs:nodejs src ./src
+COPY --chown=nodejs:nodejs tsconfig.json ./
+
+# Switch to non-root user
+USER nodejs
+
+# Configure production environment variables
 ENV PORT=5000
 ENV NODE_ENV=production
 
-# 8. Expose the application port
 EXPOSE 5000
 
-# 9. Start the server using tsx (Fast, reliable execution preserving ESM paths & EJS templates)
+# Automated Container Healthcheck probe
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+
+# Start container with tini init process for clean graceful shutdown
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["npx", "tsx", "src/server.ts"]
