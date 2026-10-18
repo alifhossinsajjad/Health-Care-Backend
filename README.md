@@ -1,5 +1,14 @@
 # 🏥 Healthcare Telemedicine Application — Production Backend Architecture
 
+[![Healthcare Backend CI](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/ci.yml/badge.svg)](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/ci.yml)
+[![Healthcare Backend CD](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/deploy.yml/badge.svg)](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/deploy.yml)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-009639?style=flat&logo=nginx&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![NodeJS](https://img.shields.io/badge/Node.js-5FA04E?style=flat&logo=nodedotjs&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)
+
 Welcome to the **Healthcare Application Backend**! A high-performance, enterprise-grade, horizontally scalable telemedicine backend engineered with **Node.js, Express, TypeScript, Prisma ORM, Redis, BullMQ, Docker Compose, and Nginx**.
 
 ---
