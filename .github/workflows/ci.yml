@@ -1,0 +1,63 @@
+name: Healthcare Backend CI
+
+on:
+  push:
+    branches: ["main", "dev", "feature/**"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-quality:
+    name: Code Quality & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Runtime (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Clean Dependencies
+        run: npm ci
+
+      - name: Validate Prisma Database Schemas
+        run: npx prisma validate
+
+      - name: Generate Prisma Client Types
+        run: npx prisma generate
+
+      - name: Run ESLint Code Audit
+        run: npm run lint
+
+      - name: Run TypeScript Strict Compilation Check
+        run: npx tsc --noEmit
+
+  docker-build-verification:
+    name: Verify Production Docker Build
+    needs: code-quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image (Dry Run Test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: healthcare-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -147,8 +147,42 @@ In our 3-replica cluster behind Nginx (`least_conn` + `max_fails=3`):
 
 ---
 
+## 🚀 Continuous Integration & Continuous Deployment (CI/CD)
+
+The repository implements an automated enterprise-grade CI/CD pipeline using **GitHub Actions**:
+
+```mermaid
+flowchart LR
+    A["git push / PR"] --> B["Stage 1: CI Pipeline"]
+    subgraph CI["Continuous Integration"]
+        B --> C["ESLint Code Audit"]
+        B --> D["TypeScript Type Check"]
+        B --> E["Prisma Schema Validation"]
+        B --> F["Docker Multi-Stage Build"]
+    end
+    CI --> G["Stage 2: CD Pipeline (Main Branch)"]
+    subgraph CD["Continuous Deployment"]
+        G --> H["SSH Handshake to Linux VPS"]
+        H --> I["Git Pull Latest Code"]
+        I --> J["docker compose up -d --scale api=3"]
+        J --> K["Health Probe (/nginx-health)"]
+    end
+```
+
+### GitHub Secrets for Deployment
+To enable auto-deployment when provisioning your Linux VPS (e.g., DigitalOcean Droplet), configure the following repository secrets under **Settings > Secrets and variables > Actions**:
+
+| Secret Key | Description | Example |
+| :--- | :--- | :--- |
+| `VPS_HOST` | Public IPv4 address of the Linux VPS | `159.65.120.45` |
+| `VPS_USER` | SSH Username (defaults to `root`) | `root` |
+| `VPS_SSH_KEY` | Private SSH key (PEM / OpenSSH format) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| `VPS_PORT` | SSH Port (optional, defaults to 22) | `22` |
+
+---
+
 ## 🌟 Upcoming Roadmap
+- [x] **Automated GitHub Actions CI/CD:** Auto-testing & deployment pipeline.
 - [ ] **Socket.io + Redis Adapter:** Distributed real-time chat between patients and doctors.
 - [ ] **WebRTC Video Consultations:** Peer-to-peer live telemedicine video calling.
 - [ ] **AI / RAG Integration:** Automatic prescription drafting and lab test report summarizer.
-- [ ] **Automated GitHub Actions CI/CD:** Auto-deployment to production VPS.

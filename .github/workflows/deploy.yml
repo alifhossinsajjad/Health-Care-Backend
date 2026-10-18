@@ -1,0 +1,56 @@
+name: Healthcare Backend CD (Production Deployment)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Production Linux VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Check VPS Configuration Readiness
+        id: check_vps
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "::notice title=VPS Pending::VPS_HOST secret not configured yet. Deployment will activate automatically once VPS is provisioned."
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy Cluster via SSH
+        if: steps.check_vps.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "=== Starting Healthcare Production Deployment ==="
+            cd /opt/healthcare-backend || exit 1
+            
+            echo "1. Pulling latest code from GitHub..."
+            git pull origin main
+            
+            echo "2. Rebuilding and rolling update with 3 API replicas..."
+            docker compose up -d --build --scale api=3 --remove-orphans
+            
+            echo "3. Cleaning up old dangling Docker images..."
+            docker image prune -f
+            
+            echo "4. Probing Nginx Health..."
+            curl -f http://localhost/nginx-health || exit 1
+            
+            echo "=== Deployment Successfully Completed! ==="
