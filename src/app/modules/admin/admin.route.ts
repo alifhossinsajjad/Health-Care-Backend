@@ -7,6 +7,7 @@ import { Role } from "../../../../generated/prisma/enums";
 
 import { multerUpload } from "../../../config/multer.config";
 import { parseJsonBody } from "../../middlewares/parseJsonBody";
+import { QueueDashboardRoutes } from "./queueDashboard.route";
 
 const router = express.Router();
 
@@ -55,6 +56,9 @@ router.delete(
   authMiddleware(Role.SUPER_ADMIN),
   AdminController.deleteSingleRequestLog
 );
+
+// Visual BullMQ Queue Dashboard (For SUPER_ADMIN)
+router.use("/queues", QueueDashboardRoutes);
 
 router.get(
   "/:id",

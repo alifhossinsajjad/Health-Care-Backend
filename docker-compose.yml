@@ -17,6 +17,8 @@ services:
     environment:
       - PORT=5000
       - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
       # Named persistent volume: request logs survive container restarts and rebuilds!
       - healthcare_logs:/app/logs

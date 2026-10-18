@@ -6,6 +6,7 @@ dotenv.config();
 
 import { prisma } from "./app/lib/prisma";
 import { seedSuperAdmin } from "./app/utils/seed";
+import { initWorkers, closeWorkers } from "./app/workers";
 
 let server: Server;
 
@@ -16,6 +17,9 @@ async function main() {
     console.log("🛢️ Database connected successfully!");
 
     await seedSuperAdmin();
+
+    // Bootstrap BullMQ background workers & distributed schedulers
+    await initWorkers();
 
     server = app.listen(envVars.PORT, () => {
       console.log(`🚀 Server is running on port ${envVars.PORT}`);
@@ -57,8 +61,9 @@ process.on("uncaughtException", (error) => {
 });
 
 // 3. SIGTERM (Signal from hosting providers like AWS, Heroku, Render to stop the server)
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("🛑 SIGTERM signal received. Shutting down server gracefully...");
+  await closeWorkers();
   if (server) {
     server.close(() => {
       console.log("✅ Server closed gracefully.");
@@ -70,8 +75,9 @@ process.on("SIGTERM", () => {
 });
 
 // 4. SIGINT (Signal when you press Ctrl+C in the terminal)
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   console.log("🛑 SIGINT signal received. Shutting down server gracefully...");
+  await closeWorkers();
   if (server) {
     server.close(() => {
       console.log("✅ Server closed gracefully.");
