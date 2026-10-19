@@ -1,0 +1,52 @@
+enum KnowledgeCategory {
+  SPECIALTY
+  DOCTOR
+  SYMPTOM
+  TRIAGE_GUIDELINE
+  HOSPITAL_FAQ
+}
+
+enum IndexingStatus {
+  PENDING
+  INDEXED
+  FAILED
+  ARCHIVED
+}
+
+model DocumentEmbedding {
+  id String @id @default(uuid(7))
+
+  // Deterministic unique chunk key for idempotency & incremental re-indexing
+  // Format: "{sourceType}:{sourceId}:{chunkIndex}"
+  chunkKey    String            @unique
+
+  // Stable source classification & lineage
+  sourceType  KnowledgeCategory
+  sourceId    String
+  sourceLabel String?
+
+  title       String
+  content     String            @db.Text
+  contentHash String            // SHA-256 hash of content & title for drift detection
+  sourceVersion Int             @default(1)
+  chunkIndex  Int               @default(0)
+
+  // 768-dimensional dense vector (gemini-embedding-001 with outputDimensionality: 768)
+  embeddingModel String         @default("gemini-embedding-001")
+  embedding   Unsupported("vector(768)")?
+
+  metadata    Json?             // Flexible attributes: fee, qualifications, emergencyTier, keywords, etc.
+
+  status      IndexingStatus    @default(PENDING)
+  isDeleted   Boolean           @default(false)
+  deletedAt   DateTime?
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([sourceType], name: "idx_doc_embeddings_sourceType")
+  @@index([sourceId], name: "idx_doc_embeddings_sourceId")
+  @@index([status, isDeleted], name: "idx_doc_embeddings_active")
+  @@index([sourceType, isDeleted], name: "idx_doc_embeddings_category")
+  @@map("document_embeddings")
+}
