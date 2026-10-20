@@ -2,11 +2,12 @@ import { Request, Response } from "express";
 import httpStatus from "http-status";
 import catchAsync from "../../../shared/catchAsync";
 import sendResponse from "../../../shared/sendResponse";
-import { AiService } from "./ai.service";
+import { IndexingService } from "./indexing.service";
+import { RagService } from "./rag.service";
 
 const chatWithAssistant = catchAsync(async (req: Request, res: Response) => {
   const { query, history } = req.body;
-  const result = await AiService.askHospitalAssistant(query, history);
+  const result = await RagService.askHospitalAssistant(query, history);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -18,7 +19,7 @@ const chatWithAssistant = catchAsync(async (req: Request, res: Response) => {
 
 const semanticSearch = catchAsync(async (req: Request, res: Response) => {
   const { query, limit, threshold, category } = req.body;
-  const results = await AiService.searchSimilarDocuments(query, {
+  const results = await RagService.searchSimilarDocuments(query, {
     limit,
     threshold,
     category,
@@ -33,18 +34,19 @@ const semanticSearch = catchAsync(async (req: Request, res: Response) => {
 });
 
 const syncKnowledge = catchAsync(async (req: Request, res: Response) => {
-  const syncReport = await AiService.syncKnowledgeBase();
+  const syncReport = await IndexingService.syncKnowledgeBase();
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Hospital knowledge base synchronized and vector embeddings generated successfully",
+    message:
+      "Hospital knowledge base synchronized and vector embeddings generated successfully",
     data: syncReport,
   });
 });
 
 const getStats = catchAsync(async (req: Request, res: Response) => {
-  const stats = await AiService.getKnowledgeStats();
+  const stats = await IndexingService.getKnowledgeStats();
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
