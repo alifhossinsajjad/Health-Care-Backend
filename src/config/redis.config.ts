@@ -49,7 +49,9 @@ export const redisClient = normalizedUrl
 let hasLoggedConnect = false;
 redisClient.on("connect", () => {
   if (!hasLoggedConnect) {
-    console.log("⚡ [Redis] Connected successfully to Upstash Cloud Redis");
+    console.log(
+      `⚡ [Redis] Connected successfully to ${isUpstash ? "Upstash Cloud Redis" : "Local Docker Redis"}`
+    );
     hasLoggedConnect = true;
   }
 });

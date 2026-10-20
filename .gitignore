@@ -1,6 +1,4 @@
 node_modules
-.env
-.env.*
 !.env.example
 dist
 
@@ -21,7 +19,6 @@ lerna-debug.log*
 Thumbs.db
 
 # IDE / Editor
-.vscode/
 .idea/
 
 # Testing
@@ -38,3 +35,4 @@ docker-compose.override.yml
 .docker/
 
 
+config.bat
