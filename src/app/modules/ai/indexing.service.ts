@@ -222,10 +222,14 @@ Associated Medical Specialty: Gastroenterology.`,
     content: `Hospital General Services & Policy:
 1. Emergency Services (ER) & Trauma Center: 24/7 round the clock, 365 days a year.
 2. Outpatient Department (OPD): Daily 8:00 AM - 10:00 PM.
-3. Appointments & Booking: Can be booked via web app, mobile portal, or hospital reception desk.
-4. Payment Methods: Online card, mobile banking (bKash/Nagad), Stripe, and cash at billing counters.
-5. Ambulance & Emergency Contact: Dedicated 24/7 hotline.`,
-    metadata: { type: "POLICY", operationalHours: "24/7" },
+3. Appointments & Booking: Can be booked via hospital web app or mobile portal.
+4. Payment & Pay Later Policy (IMPORTANT):
+   - When an appointment is booked using 'Pay Later', the patient is given an online payment window.
+   - The patient MUST complete payment online (via Card/Stripe/Mobile Banking) before the scheduled start time.
+   - If payment is not completed online within the time limit, the system automatically cancels the appointment and unblocks the slot for other patients.
+   - Payment CANNOT be made in cash at the physical hospital counter. All payments must be completed online.
+5. Ambulance & Emergency Contact: Dedicated 24/7 hospital emergency hotline.`,
+    metadata: { type: "POLICY", operationalHours: "24/7", paymentMode: "ONLINE_ONLY" },
   },
 ];
 

@@ -2,6 +2,7 @@ import httpStatus from "http-status";
 import { KnowledgeCategory } from "../../../../generated/prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../lib/prisma";
+import { AgentTools } from "./agent.tools";
 import { AI_CONFIG, EMERGENCY_PATTERNS, SYSTEM_TRIAGE_PROMPT } from "./ai.constant";
 import { EmbeddingService, getGenAIClient } from "./embedding.service";
 
@@ -87,9 +88,38 @@ const searchSimilarDocuments = async (
 };
 
 /**
+ * Helper to structure multi-turn conversation memory for Gemini API
+ */
+const formatContentsWithHistory = (
+  prompt: string,
+  history?: Array<{ role: string; parts: string }>
+) => {
+  const contents: Array<{
+    role: "user" | "model";
+    parts: Array<{ text: string }>;
+  }> = [];
+
+  if (history && history.length > 0) {
+    for (const turn of history) {
+      contents.push({
+        role: turn.role === "assistant" ? "model" : (turn.role as "user" | "model"),
+        parts: [{ text: turn.parts }],
+      });
+    }
+  }
+
+  contents.push({
+    role: "user",
+    parts: [{ text: prompt }],
+  });
+
+  return contents;
+};
+
+/**
  * Resilient multi-model failover execution to guarantee 99.9% uptime against 503 spikes
  */
-const generateWithResilience = async (prompt: string): Promise<string> => {
+const generateWithResilience = async (contents: any): Promise<string> => {
   const ai = getGenAIClient();
   const modelsToTry = [
     AI_CONFIG.PRIMARY_LLM_MODEL,
@@ -101,7 +131,7 @@ const generateWithResilience = async (prompt: string): Promise<string> => {
     try {
       const response = await ai.models.generateContent({
         model,
-        contents: prompt,
+        contents,
       });
       if (response.text) {
         return response.text;
@@ -122,23 +152,61 @@ const generateWithResilience = async (prompt: string): Promise<string> => {
 };
 
 /**
- * Full Healthcare RAG Pipeline:
- * 1. Deterministic Rule 0 Emergency Check
- * 2. Dense Vector Retrieval (pgvector Cosine Search)
- * 3. Ground Truth Context Assembly
- * 4. Grounded LLM Generation with Multi-Model Failover
- * 5. Structured Citation and Doctor Recommendation Attribution
+ * Real-time Token Streaming with Multi-Model Failover (Server-Sent Events)
  */
-const askHospitalAssistant = async (
-  query: string,
-  history?: Array<{ role: string; parts: string }>
-) => {
+const generateStreamWithResilience = async (
+  contents: any,
+  onChunk: (text: string) => void
+): Promise<string> => {
+  const ai = getGenAIClient();
+  const modelsToTry = [
+    AI_CONFIG.PRIMARY_LLM_MODEL,
+    ...AI_CONFIG.FALLBACK_LLM_MODELS,
+  ];
+
+  let lastError: any = null;
+  for (const model of modelsToTry) {
+    try {
+      const responseStream = await ai.models.generateContentStream({
+        model,
+        contents,
+      });
+
+      let fullText = "";
+      for await (const chunk of responseStream) {
+        if (chunk.text) {
+          fullText += chunk.text;
+          onChunk(chunk.text);
+        }
+      }
+      if (fullText) {
+        return fullText;
+      }
+    } catch (err: any) {
+      console.warn(
+        `[AI Triage Stream] Model ${model} encountered load spike, attempting failover:`,
+        err.message?.slice(0, 100)
+      );
+      lastError = err;
+    }
+  }
+
+  throw new ApiError(
+    httpStatus.SERVICE_UNAVAILABLE,
+    `AI streaming unavailable across all model endpoints: ${lastError?.message || "Unknown error"}`
+  );
+};
+
+/**
+ * Common Ground Truth Context Assembler
+ */
+const prepareRAGContext = async (query: string) => {
   const isEmergency = isCriticalEmergency(query);
 
   // Retrieve relevant knowledge chunks via pgvector Cosine similarity
   const retrievedDocs = await searchSimilarDocuments(query, {
     limit: AI_CONFIG.RETRIEVAL_LIMIT,
-    threshold: 0.45, // balanced threshold
+    threshold: 0.45,
   });
 
   // Extract structured recommendations from retrieved context
@@ -215,10 +283,70 @@ PATIENT / USER QUERY:
 Please provide a clear, empathetic, clinically responsible, and well-structured response following all safety rules:
 `;
 
-  const answer = await generateWithResilience(prompt);
+  return {
+    prompt,
+    isEmergency,
+    suggestedSpecialties,
+    recommendedDoctors,
+    retrievedDocs,
+  };
+};
+
+/**
+ * Standard Multi-Turn RAG Assistant
+ */
+const askHospitalAssistant = async (
+  query: string,
+  history?: Array<{ role: string; parts: string }>
+) => {
+  const {
+    prompt,
+    isEmergency,
+    suggestedSpecialties,
+    recommendedDoctors,
+    retrievedDocs,
+  } = await prepareRAGContext(query);
+
+  const contents = formatContentsWithHistory(prompt, history);
+  const answer = await generateWithResilience(contents);
 
   return {
     answer,
+    isEmergency,
+    suggestedSpecialties,
+    recommendedDoctors,
+    sources: retrievedDocs.map((d) => ({
+      id: d.id,
+      sourceType: d.sourceType,
+      sourceId: d.sourceId,
+      sourceLabel: d.sourceLabel,
+      title: d.title,
+      similarity: Number(d.similarity.toFixed(4)),
+    })),
+  };
+};
+
+/**
+ * Real-time Streaming Multi-Turn RAG Assistant (Server-Sent Events)
+ */
+const askHospitalAssistantStream = async (
+  query: string,
+  history: Array<{ role: string; parts: string }> | undefined,
+  onChunk: (token: string) => void
+) => {
+  const {
+    prompt,
+    isEmergency,
+    suggestedSpecialties,
+    recommendedDoctors,
+    retrievedDocs,
+  } = await prepareRAGContext(query);
+
+  const contents = formatContentsWithHistory(prompt, history);
+  const fullAnswer = await generateStreamWithResilience(contents, onChunk);
+
+  return {
+    answer: fullAnswer,
     isEmergency,
     suggestedSpecialties,
     recommendedDoctors,
@@ -237,5 +365,8 @@ export const RagService = {
   isCriticalEmergency,
   searchSimilarDocuments,
   generateWithResilience,
+  generateStreamWithResilience,
   askHospitalAssistant,
+  askHospitalAssistantStream,
+  tools: AgentTools,
 };

@@ -23,7 +23,9 @@ export const AiService = {
 
   // RAG & Triage operations
   askHospitalAssistant: RagService.askHospitalAssistant,
+  askHospitalAssistantStream: RagService.askHospitalAssistantStream,
   searchSimilarDocuments: RagService.searchSimilarDocuments,
   isCriticalEmergency: RagService.isCriticalEmergency,
   generateWithResilience: RagService.generateWithResilience,
+  tools: RagService.tools,
 };
