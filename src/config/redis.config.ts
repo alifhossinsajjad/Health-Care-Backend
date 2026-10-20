@@ -50,7 +50,7 @@ let hasLoggedConnect = false;
 redisClient.on("connect", () => {
   if (!hasLoggedConnect) {
     console.log(
-      `⚡ [Redis] Connected successfully to ${isUpstash ? "Upstash Cloud Redis" : "Local Docker Redis"}`
+      `⚡ [Redis] Connected successfully to ${isUpstash ? "Upstash Cloud Redis" : "Local Docker Redis"}`,
     );
     hasLoggedConnect = true;
   }
