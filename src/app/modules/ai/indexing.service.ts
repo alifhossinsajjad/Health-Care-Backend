@@ -24,7 +24,7 @@ export interface ChunkPayload {
  */
 const upsertChunkWithEmbedding = async (chunk: ChunkPayload) => {
   const hash = generateContentHash(
-    `${chunk.title}\n${chunk.content}\n${JSON.stringify(chunk.metadata ?? {})}`
+    `${chunk.title}\n${chunk.content}\n${JSON.stringify(chunk.metadata ?? {})}`,
   );
 
   const existing = await prisma.documentEmbedding.findUnique({
@@ -32,7 +32,11 @@ const upsertChunkWithEmbedding = async (chunk: ChunkPayload) => {
   });
 
   // If already indexed and content is unchanged, skip re-computation (Idempotent)
-  if (existing && existing.contentHash === hash && existing.status === "INDEXED") {
+  if (
+    existing &&
+    existing.contentHash === hash &&
+    existing.status === "INDEXED"
+  ) {
     return { status: "SKIPPED", chunkKey: chunk.chunkKey };
   }
 
@@ -73,7 +77,7 @@ const upsertChunkWithEmbedding = async (chunk: ChunkPayload) => {
      SET "embedding" = $1::vector, "status" = 'INDEXED', "updatedAt" = NOW() 
      WHERE "id" = $2`,
     vectorStr,
-    doc.id
+    doc.id,
   );
 
   return { status: "INDEXED", chunkKey: chunk.chunkKey };
@@ -89,7 +93,8 @@ const syncSpecialties = async () => {
   for (const item of specialties) {
     const chunkKey = `SPECIALTY:${item.id}:0`;
     const content = `Medical Specialty: ${item.title}. Description: ${
-      item.description || "General hospital clinical specialty and patient care."
+      item.description ||
+      "General hospital clinical specialty and patient care."
     } Patients seeking consultation for symptoms related to ${item.title} should book an appointment with our ${item.title} specialists.`;
 
     await upsertChunkWithEmbedding({
@@ -125,8 +130,9 @@ const syncDoctors = async () => {
   let processedCount = 0;
   for (const doc of doctors) {
     const specialtyTitles =
-      doc.specialties.map((s: { specialty: { title: string } }) => s.specialty.title).join(", ") ||
-      "General Medicine";
+      doc.specialties
+        .map((s: { specialty: { title: string } }) => s.specialty.title)
+        .join(", ") || "General Medicine";
     const chunkKey = `DOCTOR:${doc.id}:0`;
 
     const content = `Doctor Profile: Dr. ${doc.name}.
@@ -229,7 +235,11 @@ Associated Medical Specialty: Gastroenterology.`,
    - If payment is not completed online within the time limit, the system automatically cancels the appointment and unblocks the slot for other patients.
    - Payment CANNOT be made in cash at the physical hospital counter. All payments must be completed online.
 5. Ambulance & Emergency Contact: Dedicated 24/7 hospital emergency hotline.`,
-    metadata: { type: "POLICY", operationalHours: "24/7", paymentMode: "ONLINE_ONLY" },
+    metadata: {
+      type: "POLICY",
+      operationalHours: "24/7",
+      paymentMode: "ONLINE_ONLY",
+    },
   },
 ];
 
@@ -297,10 +307,12 @@ const getKnowledgeStats = async () => {
     activeIndexedRecords: active,
     pendingRecords: pending,
     failedRecords: failed,
-    categoryBreakdown: categoryBreakdown.map((item: { sourceType: KnowledgeCategory; _count: { id: number } }) => ({
-      category: item.sourceType,
-      count: item._count.id,
-    })),
+    categoryBreakdown: categoryBreakdown.map(
+      (item: { sourceType: KnowledgeCategory; _count: { id: number } }) => ({
+        category: item.sourceType,
+        count: item._count.id,
+      }),
+    ),
     embeddingDimension: AI_CONFIG.VECTOR_DIMENSION,
     embeddingModel: AI_CONFIG.EMBEDDING_MODEL,
     llmModel: AI_CONFIG.PRIMARY_LLM_MODEL,

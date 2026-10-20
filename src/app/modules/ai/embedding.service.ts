@@ -9,7 +9,7 @@ export const getGenAIClient = (): GoogleGenAI => {
   if (!envVars.GEMINI_API_KEY) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      "GEMINI_API_KEY is missing from environment variables."
+      "GEMINI_API_KEY is missing from environment variables.",
     );
   }
   return new GoogleGenAI({ apiKey: envVars.GEMINI_API_KEY });
@@ -34,7 +34,7 @@ const generateEmbedding = async (text: string): Promise<number[]> => {
   if (!values || values.length !== AI_CONFIG.VECTOR_DIMENSION) {
     throw new ApiError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      `Failed to generate valid ${AI_CONFIG.VECTOR_DIMENSION}-dimensional embedding`
+      `Failed to generate valid ${AI_CONFIG.VECTOR_DIMENSION}-dimensional embedding`,
     );
   }
   return values;
