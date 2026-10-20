@@ -3,7 +3,11 @@ import { KnowledgeCategory } from "../../../../generated/prisma/client";
 import { ApiError } from "../../errors/ApiError";
 import { prisma } from "../../lib/prisma";
 import { AgentTools } from "./agent.tools";
-import { AI_CONFIG, EMERGENCY_PATTERNS, SYSTEM_TRIAGE_PROMPT } from "./ai.constant";
+import {
+  AI_CONFIG,
+  EMERGENCY_PATTERNS,
+  SYSTEM_TRIAGE_PROMPT,
+} from "./ai.constant";
 import { EmbeddingService, getGenAIClient } from "./embedding.service";
 
 // Deterministic Rule-0 Emergency Triage Check (Fast regex before calling LLM)
@@ -32,7 +36,7 @@ const searchSimilarDocuments = async (
     limit?: number;
     threshold?: number;
     category?: KnowledgeCategory;
-  }
+  },
 ): Promise<SearchResult[]> => {
   const limit = options?.limit ?? AI_CONFIG.RETRIEVAL_LIMIT;
   const threshold = options?.threshold ?? AI_CONFIG.SIMILARITY_THRESHOLD;
@@ -92,7 +96,7 @@ const searchSimilarDocuments = async (
  */
 const formatContentsWithHistory = (
   prompt: string,
-  history?: Array<{ role: string; parts: string }>
+  history?: Array<{ role: string; parts: string }>,
 ) => {
   const contents: Array<{
     role: "user" | "model";
@@ -102,7 +106,8 @@ const formatContentsWithHistory = (
   if (history && history.length > 0) {
     for (const turn of history) {
       contents.push({
-        role: turn.role === "assistant" ? "model" : (turn.role as "user" | "model"),
+        role:
+          turn.role === "assistant" ? "model" : (turn.role as "user" | "model"),
         parts: [{ text: turn.parts }],
       });
     }
@@ -139,7 +144,7 @@ const generateWithResilience = async (contents: any): Promise<string> => {
     } catch (err: any) {
       console.warn(
         `[AI Triage] Model ${model} encountered load spike, attempting failover:`,
-        err.message?.slice(0, 100)
+        err.message?.slice(0, 100),
       );
       lastError = err;
     }
@@ -147,7 +152,7 @@ const generateWithResilience = async (contents: any): Promise<string> => {
 
   throw new ApiError(
     httpStatus.SERVICE_UNAVAILABLE,
-    `AI generation unavailable across all model endpoints: ${lastError?.message || "Unknown error"}`
+    `AI generation unavailable across all model endpoints: ${lastError?.message || "Unknown error"}`,
   );
 };
 
@@ -156,7 +161,7 @@ const generateWithResilience = async (contents: any): Promise<string> => {
  */
 const generateStreamWithResilience = async (
   contents: any,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
 ): Promise<string> => {
   const ai = getGenAIClient();
   const modelsToTry = [
@@ -185,7 +190,7 @@ const generateStreamWithResilience = async (
     } catch (err: any) {
       console.warn(
         `[AI Triage Stream] Model ${model} encountered load spike, attempting failover:`,
-        err.message?.slice(0, 100)
+        err.message?.slice(0, 100),
       );
       lastError = err;
     }
@@ -193,7 +198,7 @@ const generateStreamWithResilience = async (
 
   throw new ApiError(
     httpStatus.SERVICE_UNAVAILABLE,
-    `AI streaming unavailable across all model endpoints: ${lastError?.message || "Unknown error"}`
+    `AI streaming unavailable across all model endpoints: ${lastError?.message || "Unknown error"}`,
   );
 };
 
@@ -227,7 +232,7 @@ const prepareRAGContext = async (query: string) => {
     } else if (doc.sourceType === KnowledgeCategory.DOCTOR) {
       if (doc.metadata?.doctorId) {
         const exists = recommendedDoctors.some(
-          (d) => d.doctorId === doc.metadata.doctorId
+          (d) => d.doctorId === doc.metadata.doctorId,
         );
         if (!exists) {
           recommendedDoctors.push({
@@ -243,18 +248,15 @@ const prepareRAGContext = async (query: string) => {
   });
 
   // Build Ground Truth Context string
-  let contextText = "";
-  if (retrievedDocs.length > 0) {
-    contextText = retrievedDocs
-      .map(
-        (doc, index) =>
-          `[Source ${index + 1}] (${doc.sourceType} - ${doc.title}):\n${doc.content}`
-      )
-      .join("\n\n");
-  } else {
-    contextText =
-      "No specific hospital documents directly matched the symptoms. Provide safe general guidance and advise patient to consult the hospital reception or emergency department.";
-  }
+  const contextText =
+    retrievedDocs.length > 0
+      ? retrievedDocs
+          .map(
+            (doc, index) =>
+              `[Source ${index + 1}] (${doc.sourceType} - ${doc.title}):\n${doc.content}`,
+          )
+          .join("\n\n")
+      : "No specific hospital documents directly matched the symptoms. Provide safe general guidance and advise patient to consult the hospital reception or emergency department.";
 
   // Construct Gemini Prompt with explicit clinical safety constraints
   let emergencyDirective = "";
@@ -297,7 +299,7 @@ Please provide a clear, empathetic, clinically responsible, and well-structured 
  */
 const askHospitalAssistant = async (
   query: string,
-  history?: Array<{ role: string; parts: string }>
+  history?: Array<{ role: string; parts: string }>,
 ) => {
   const {
     prompt,
@@ -332,7 +334,7 @@ const askHospitalAssistant = async (
 const askHospitalAssistantStream = async (
   query: string,
   history: Array<{ role: string; parts: string }> | undefined,
-  onChunk: (token: string) => void
+  onChunk: (token: string) => void,
 ) => {
   const {
     prompt,
