@@ -318,6 +318,6 @@ To enable auto-deployment when provisioning your Linux VPS (e.g., DigitalOcean D
 ## 🌟 Upcoming Roadmap
 - [x] **Automated GitHub Actions CI/CD:** Auto-testing & deployment pipeline.
 - [x] **Enterprise Applied AI & Clinical RAG Architecture:** Production pgvector HNSW search, deterministic Rule-0 triage, multi-model failover, and SSE streaming assistant.
-- [ ] **Socket.io + Redis Adapter:** Distributed real-time chat between patients and doctors.
+- [x] **Distributed Real-Time Chat Engine (Socket.io + Redis Adapter):** Cross-replica event broadcasting across cluster, appointment-scoped JWT authorization, PostgreSQL message persistence, typing indicators, and read receipts.
 - [ ] **WebRTC Video Consultations:** Peer-to-peer live telemedicine video calling.
 - [ ] **Multimodal Lab Report Summarizer:** PDF & image test report analysis with vision models.
