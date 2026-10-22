@@ -1,8 +1,8 @@
 node_modules
+dist
 .env
 .env.*
 !.env.example
-dist
 
 # Prisma
 /generated/prisma
@@ -21,7 +21,6 @@ lerna-debug.log*
 Thumbs.db
 
 # IDE / Editor
-.vscode/
 .idea/
 
 # Testing
@@ -36,5 +35,4 @@ coverage/
 # Docker
 docker-compose.override.yml
 .docker/
-
 
