@@ -20,6 +20,7 @@ model Appointment {
     prescription Prescription?
     review       Review?
     payment      Payment?
+    chatMessages ChatMessage[]
 
     @@unique([doctorId, scheduleId])
     @@index([patientId])

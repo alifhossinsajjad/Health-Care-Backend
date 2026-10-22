@@ -1,4 +1,4 @@
-import { Server } from "node:http";
+import http, { Server } from "node:http";
 import dotenv from "dotenv";
 import app from "./app";
 import { envVars } from "./config/env";
@@ -7,6 +7,7 @@ dotenv.config();
 import { prisma } from "./app/lib/prisma";
 import { seedSuperAdmin } from "./app/utils/seed";
 import { initWorkers, closeWorkers } from "./app/workers";
+import { initSocketServer } from "./socket";
 
 let server: Server;
 
@@ -21,7 +22,10 @@ async function main() {
     // Bootstrap BullMQ background workers & distributed schedulers
     await initWorkers();
 
-    server = app.listen(envVars.PORT, () => {
+    const httpServer = http.createServer(app);
+    initSocketServer(httpServer);
+
+    server = httpServer.listen(envVars.PORT, () => {
       console.log(`🚀 Server is running on port ${envVars.PORT}`);
     });
   } catch (error) {

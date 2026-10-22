@@ -39,3 +39,10 @@ enum PaymentStatus {
   PAID
   UNPAID
 }
+
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  SYSTEM
+}

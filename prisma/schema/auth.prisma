@@ -17,6 +17,8 @@ model User {
   doctor              Doctor?
   admin               Admin?
   superAdmin          SuperAdmin?
+  sentMessages        ChatMessage[] @relation("SentMessages")
+  receivedMessages    ChatMessage[] @relation("ReceivedMessages")
 
   @@unique([email])
   @@map("user")
