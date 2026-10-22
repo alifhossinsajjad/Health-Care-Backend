@@ -23,46 +23,55 @@ export const initChatSocket = (io: Server) => {
     /**
      * 1. Join Appointment Consultation Room
      */
-    socket.on("join:appointment", async (payload: IJoinRoomPayload, callback) => {
-      try {
-        const { appointmentId } = payload;
-        if (!appointmentId) {
-          if (callback) callback({ success: false, message: "appointmentId is required" });
-          return;
-        }
+    socket.on(
+      "join:appointment",
+      async (payload: IJoinRoomPayload, callback) => {
+        try {
+          const { appointmentId } = payload;
+          if (!appointmentId) {
+            if (callback)
+              callback({
+                success: false,
+                message: "appointmentId is required",
+              });
+            return;
+          }
 
-        const participantInfo = await ChatService.verifyAppointmentParticipant(
-          user.id,
-          appointmentId,
-        );
+          const participantInfo =
+            await ChatService.verifyAppointmentParticipant(
+              user.id,
+              appointmentId,
+            );
 
-        const roomName = `appointment:${appointmentId}`;
-        socket.join(roomName);
+          const roomName = `appointment:${appointmentId}`;
+          socket.join(roomName);
 
-        // Notify room that participant is present
-        socket.to(roomName).emit("participant:online", {
-          userId: user.id,
-          role: user.role,
-          appointmentId,
-        });
-
-        if (callback) {
-          callback({
-            success: true,
-            message: "Joined appointment chat room successfully",
-            data: {
-              room: roomName,
-              isPatient: participantInfo.isPatient,
-              isDoctor: participantInfo.isDoctor,
-              receiverUserId: participantInfo.receiverUserId,
-            },
+          // Notify room that participant is present
+          socket.to(roomName).emit("participant:online", {
+            userId: user.id,
+            role: user.role,
+            appointmentId,
           });
+
+          if (callback) {
+            callback({
+              success: true,
+              message: "Joined appointment chat room successfully",
+              data: {
+                room: roomName,
+                isPatient: participantInfo.isPatient,
+                isDoctor: participantInfo.isDoctor,
+                receiverUserId: participantInfo.receiverUserId,
+              },
+            });
+          }
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to join room";
+          if (callback) callback({ success: false, message: errorMessage });
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to join room";
-        if (callback) callback({ success: false, message: errorMessage });
-      }
-    });
+      },
+    );
 
     /**
      * 2. Send Message
@@ -70,7 +79,11 @@ export const initChatSocket = (io: Server) => {
     socket.on("chat:send", async (payload: ISendMessagePayload, callback) => {
       try {
         if (!payload.appointmentId || !payload.message?.trim()) {
-          if (callback) callback({ success: false, message: "Valid appointmentId and message are required" });
+          if (callback)
+            callback({
+              success: false,
+              message: "Valid appointmentId and message are required",
+            });
           return;
         }
 
@@ -91,7 +104,8 @@ export const initChatSocket = (io: Server) => {
 
         if (callback) callback({ success: true, data: savedMessage });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to send message";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to send message";
         if (callback) callback({ success: false, message: errorMessage });
       }
     });
@@ -132,8 +146,17 @@ export const initChatSocket = (io: Server) => {
      */
     socket.on("chat:edit", async (payload: IEditMessagePayload, callback) => {
       try {
-        if (!payload?.messageId || !payload?.appointmentId || !payload?.newMessage?.trim()) {
-          if (callback) callback({ success: false, message: "Valid messageId, appointmentId and newMessage are required" });
+        if (
+          !payload?.messageId ||
+          !payload?.appointmentId ||
+          !payload?.newMessage?.trim()
+        ) {
+          if (callback)
+            callback({
+              success: false,
+              message:
+                "Valid messageId, appointmentId and newMessage are required",
+            });
           return;
         }
 
@@ -143,7 +166,8 @@ export const initChatSocket = (io: Server) => {
 
         if (callback) callback({ success: true, data: updatedMessage });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to edit message";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to edit message";
         if (callback) callback({ success: false, message: errorMessage });
       }
     });
@@ -151,27 +175,38 @@ export const initChatSocket = (io: Server) => {
     /**
      * 6. Delete / Unsend Message for Everyone (Meta Messenger-like)
      */
-    socket.on("chat:delete", async (payload: IDeleteMessagePayload, callback) => {
-      try {
-        if (!payload?.messageId || !payload?.appointmentId) {
-          if (callback) callback({ success: false, message: "Valid messageId and appointmentId are required" });
-          return;
+    socket.on(
+      "chat:delete",
+      async (payload: IDeleteMessagePayload, callback) => {
+        try {
+          if (!payload?.messageId || !payload?.appointmentId) {
+            if (callback)
+              callback({
+                success: false,
+                message: "Valid messageId and appointmentId are required",
+              });
+            return;
+          }
+
+          const deletedMessage = await ChatService.deleteMessage(
+            user.id,
+            payload,
+          );
+          const roomName = `appointment:${payload.appointmentId}`;
+          io.to(roomName).emit("chat:deleted", {
+            messageId: payload.messageId,
+            appointmentId: payload.appointmentId,
+            deletedMessage,
+          });
+
+          if (callback) callback({ success: true, data: deletedMessage });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to delete message";
+          if (callback) callback({ success: false, message: errorMessage });
         }
-
-        const deletedMessage = await ChatService.deleteMessage(user.id, payload);
-        const roomName = `appointment:${payload.appointmentId}`;
-        io.to(roomName).emit("chat:deleted", {
-          messageId: payload.messageId,
-          appointmentId: payload.appointmentId,
-          deletedMessage,
-        });
-
-        if (callback) callback({ success: true, data: deletedMessage });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to delete message";
-        if (callback) callback({ success: false, message: errorMessage });
-      }
-    });
+      },
+    );
 
     /**
      * 7. Leave Consultation Room
