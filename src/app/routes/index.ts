@@ -16,6 +16,7 @@ import { PrescriptionRoutes } from "../modules/prescription/prescription.route";
 import { StatsRoutes } from "../modules/stats/stats.route";
 import { AiRoutes } from "../modules/ai/ai.route";
 import { ChatRoutes } from "../modules/chat/chat.route";
+import { WebRtcRoutes } from "../modules/webrtc/webrtc.route";
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use("/reviews", ReviewRoutes);
 router.use("/stats", StatsRoutes);
 router.use("/ai", AiRoutes);
 router.use("/chat", ChatRoutes);
+router.use("/webrtc", WebRtcRoutes);
 
 export const indexRoutes = router;

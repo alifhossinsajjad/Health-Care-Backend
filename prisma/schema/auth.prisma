@@ -19,6 +19,8 @@ model User {
   superAdmin          SuperAdmin?
   sentMessages        ChatMessage[] @relation("SentMessages")
   receivedMessages    ChatMessage[] @relation("ReceivedMessages")
+  initiatedCalls      VideoConsultationLog[] @relation("CallerConsultations")
+  receivedCalls       VideoConsultationLog[] @relation("ReceiverConsultations")
 
   @@unique([email])
   @@map("user")

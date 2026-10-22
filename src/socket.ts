@@ -6,6 +6,7 @@ import { envVars } from "./config/env";
 import { verifyToken } from "./app/utils/jwt";
 import { JwtPayload, Secret } from "jsonwebtoken";
 import { initChatSocket } from "./app/modules/chat/chat.socket";
+import { initWebRtcSocket } from "./app/modules/webrtc/webrtc.socket";
 
 let io: Server | null = null;
 
@@ -86,7 +87,15 @@ export const initSocketServer = (httpServer: HttpServer): Server => {
   });
 
   // 3. Initialize Domain Sockets
+  io.on("connection", (socket) => {
+    const user = socket.data.user;
+    if (user) {
+      console.log(`🔌 [Socket.io Connected] User ID: ${user.id} (${user.role}) | Socket ID: ${socket.id}`);
+    }
+  });
+
   initChatSocket(io);
+  initWebRtcSocket(io);
 
   console.log("🔌 [Socket.io] Server ready and listening for real-time events!");
   return io;

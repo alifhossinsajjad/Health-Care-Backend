@@ -48,3 +48,11 @@ enum MessageType {
   DOCUMENT
   SYSTEM
 }
+
+enum CallStatus {
+  INITIATED
+  ACCEPTED
+  REJECTED
+  MISSED
+  ENDED
+}

@@ -315,9 +315,95 @@ To enable auto-deployment when provisioning your Linux VPS (e.g., DigitalOcean D
 
 ---
 
+## 💬 Distributed Real-Time Chat Engine (Socket.io + Redis Pub/Sub)
+
+Our real-time messaging layer provides end-to-end appointment-scoped communication between Patients and Doctors, engineered with horizontal multi-replica scalability using the `@socket.io/redis-adapter`.
+
+```mermaid
+flowchart LR
+    PatientSocket["Patient Client<br/>(Socket.io / Bearer JWT)"] <--> Pod1["API Pod 1<br/>(Node.js / Express)"]
+    DoctorSocket["Doctor Client<br/>(Socket.io / Bearer JWT)"] <--> Pod2["API Pod 2<br/>(Node.js / Express)"]
+    
+    Pod1 <--> RedisBus[("Redis Pub/Sub Adapter<br/>Cross-Pod Cluster Broadcast")]
+    Pod2 <--> RedisBus
+    
+    Pod1 --> PG[("PostgreSQL DB<br/>ChatMessage Table")]
+```
+
+### Key Chat Features & Security
+- **Strict Appointment Boundary:** Handshake JWT authentication + database verification ensures only the assigned Doctor and Patient can access consultation messages.
+- **Modern Messaging Capabilities:** Full Meta Messenger/WhatsApp-like features including real-time message editing (`chat:edit`), unsend/delete for everyone (`chat:delete`), typing indicators (`chat:typing`), and real-time read receipts (`chat:read`).
+- **Cloudinary Attachments:** Multi-format file uploads (images, medical PDFs, audio clips) via `POST /api/v1/chat/:appointmentId/attachment`.
+
+---
+
+## 📹 WebRTC Live Voice & Video Consultation Architecture
+
+For peer-to-peer (P2P) doctor-patient telemedicine calls, we engineered a distributed signaling plane over Socket.io coupled with PostgreSQL consultation session audit logging.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Doctor as 👨‍⚕️ Doctor
+    participant Server as ⚡ Socket.io Server + Redis
+    actor Patient as 🧑‍🦰 Patient
+    participant DB as 🛢️ PostgreSQL DB
+
+    Doctor->>Server: call:initiate { appointmentId, videoCallingId, callType }
+    Server->>DB: Validate access + Create VideoConsultationLog (INITIATED)
+    Server-->>Patient: call:incoming { callId, callerName, videoCallingId }
+    
+    Patient->>Server: call:accept { appointmentId, callId }
+    Server->>DB: Update VideoConsultationLog (ACCEPTED)
+    Server-->>Doctor: call:accepted { callId }
+    
+    Note over Doctor,Patient: WebRTC P2P Signaling Exchange
+    Doctor->>Server: webrtc:offer { appointmentId, sdp }
+    Server-->>Patient: webrtc:offer { sdp }
+    Patient->>Server: webrtc:answer { appointmentId, sdp }
+    Server-->>Doctor: webrtc:answer { sdp }
+    Doctor->>Server: webrtc:ice-candidate { candidate }
+    Server-->>Patient: webrtc:ice-candidate { candidate }
+    Patient->>Server: webrtc:ice-candidate { candidate }
+    Server-->>Doctor: webrtc:ice-candidate { candidate }
+    
+    Note over Doctor,Patient: Direct Peer-to-Peer Encrypted Audio/Video Stream (SRTP)
+    
+    Doctor->>Server: call:toggle-media { videoMuted, audioMuted }
+    Server-->>Patient: call:media-toggled { videoMuted, audioMuted }
+    
+    Doctor->>Server: call:end { appointmentId, callId }
+    Server->>DB: Update VideoConsultationLog (ENDED, durationSec: 720s)
+    Server-->>Patient: call:ended { durationSec }
+```
+
+### 📡 WebRTC Signaling Socket Events
+
+| Event Name | Direction | Payload Parameters | Description |
+| :--- | :--- | :--- | :--- |
+| `call:initiate` | Client ➔ Server | `{ appointmentId, videoCallingId, callType: "VIDEO" \| "AUDIO" }` | Initiates call and verifies appointment room integrity |
+| `call:incoming` | Server ➔ Client | `{ callId, appointmentId, videoCallingId, callerName, callType }` | Emitted to receiver's private room (`user:userId`) |
+| `call:accept` | Client ➔ Server | `{ appointmentId, callId }` | Accepts incoming call and joins call room |
+| `call:accepted` | Server ➔ Room | `{ callId, appointmentId, acceptedBy }` | Notifies peer that call was accepted |
+| `call:reject` | Client ➔ Server | `{ appointmentId, callId, reason }` | Declines incoming call |
+| `webrtc:offer` | Bidirectional | `{ appointmentId, sdp }` | SDP offer transmission for session negotiation |
+| `webrtc:answer` | Bidirectional | `{ appointmentId, sdp }` | SDP answer transmission to complete handshake |
+| `webrtc:ice-candidate` | Bidirectional | `{ appointmentId, candidate }` | Trickle ICE candidate relay for NAT/firewall traversal |
+| `call:toggle-media` | Client ➔ Server | `{ appointmentId, videoMuted?, audioMuted? }` | Emits `call:media-toggled` to peer when mic/cam is toggled |
+| `call:end` | Client ➔ Server | `{ appointmentId, callId? }` | Terminates call, logs duration in DB, emits `call:ended` |
+
+### 🌐 WebRTC REST Endpoints
+
+| Method | Endpoint | Access Role | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/webrtc/ice-servers` | `PATIENT`, `DOCTOR`, `ADMIN` | Fetches public STUN/TURN ICE server configuration |
+| `GET` | `/api/v1/webrtc/:appointmentId/logs` | `PATIENT`, `DOCTOR`, `ADMIN` | Retrieves consultation session history and billing duration |
+
+---
+
 ## 🌟 Upcoming Roadmap
 - [x] **Automated GitHub Actions CI/CD:** Auto-testing & deployment pipeline.
 - [x] **Enterprise Applied AI & Clinical RAG Architecture:** Production pgvector HNSW search, deterministic Rule-0 triage, multi-model failover, and SSE streaming assistant.
 - [x] **Distributed Real-Time Chat Engine (Socket.io + Redis Adapter):** Cross-replica event broadcasting across cluster, appointment-scoped JWT authorization, PostgreSQL message persistence, typing indicators, and read receipts.
-- [ ] **WebRTC Video Consultations:** Peer-to-peer live telemedicine video calling.
-- [ ] **Multimodal Lab Report Summarizer:** PDF & image test report analysis with vision models.
+- [x] **WebRTC Video Consultations:** Peer-to-peer live telemedicine video calling with session duration tracking and distributed signaling.
+- [ ] **Multimodal Lab Report Summarizer:** PDF & image test report analysis with Google Gemini Vision models.
