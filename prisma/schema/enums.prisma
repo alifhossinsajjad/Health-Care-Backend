@@ -43,6 +43,8 @@ enum PaymentStatus {
 enum MessageType {
   TEXT
   IMAGE
+  AUDIO
+  VIDEO
   DOCUMENT
   SYSTEM
 }

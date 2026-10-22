@@ -49,17 +49,18 @@ export const initSocketServer = (httpServer: HttpServer): Server => {
   // 2. JWT Handshake Authentication Middleware
   io.use((socket, next) => {
     try {
-      const authHeader =
+      const rawToken =
         socket.handshake.auth?.token ||
-        socket.handshake.headers?.authorization;
+        socket.handshake.headers?.authorization ||
+        (socket.handshake.query?.token as string);
 
-      if (!authHeader) {
+      if (!rawToken) {
         return next(new Error("Authentication error: Access token required"));
       }
 
-      const token = typeof authHeader === "string" && authHeader.startsWith("Bearer ")
-        ? authHeader.replace("Bearer ", "").trim()
-        : String(authHeader).trim();
+      const token = typeof rawToken === "string" && rawToken.startsWith("Bearer ")
+        ? rawToken.replace("Bearer ", "").trim()
+        : String(rawToken).trim();
 
       const decoded = verifyToken<JwtPayload>(
         token,

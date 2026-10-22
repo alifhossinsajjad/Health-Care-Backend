@@ -1,7 +1,12 @@
 import httpStatus from "http-status";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../errors/ApiError";
-import { ISendMessagePayload, IMessageFilterOptions } from "./chat.interface";
+import {
+  ISendMessagePayload,
+  IMessageFilterOptions,
+  IEditMessagePayload,
+  IDeleteMessagePayload,
+} from "./chat.interface";
 import { Role, MessageType } from "../../../../generated/prisma/enums";
 
 /**
@@ -213,10 +218,123 @@ const getUnreadMessageCount = async (userId: string) => {
   return { unreadCount: count };
 };
 
+/**
+ * Edits an existing message.
+ * Enforces ownership: only the original sender can edit their message.
+ */
+const editMessage = async (userId: string, payload: IEditMessagePayload) => {
+  await verifyAppointmentParticipant(userId, payload.appointmentId);
+
+  const existingMessage = await prisma.chatMessage.findUnique({
+    where: { id: payload.messageId },
+  });
+
+  if (!existingMessage) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Message not found");
+  }
+
+  if (existingMessage.appointmentId !== payload.appointmentId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Message does not belong to this appointment");
+  }
+
+  if (existingMessage.senderId !== userId) {
+    throw new ApiError(httpStatus.FORBIDDEN, "You can only edit your own messages");
+  }
+
+  if (existingMessage.isDeleted) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Cannot edit a deleted message");
+  }
+
+  const updatedMessage = await prisma.chatMessage.update({
+    where: { id: payload.messageId },
+    data: {
+      message: payload.newMessage,
+      isEdited: true,
+      editedAt: new Date(),
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          image: true,
+        },
+      },
+      receiver: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          image: true,
+        },
+      },
+    },
+  });
+
+  return updatedMessage;
+};
+
+/**
+ * Soft-deletes ("Unsend / Delete for Everyone") an existing message.
+ * Enforces ownership or admin privilege.
+ */
+const deleteMessage = async (userId: string, payload: IDeleteMessagePayload) => {
+  await verifyAppointmentParticipant(userId, payload.appointmentId);
+
+  const existingMessage = await prisma.chatMessage.findUnique({
+    where: { id: payload.messageId },
+  });
+
+  if (!existingMessage) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Message not found");
+  }
+
+  if (existingMessage.appointmentId !== payload.appointmentId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Message does not belong to this appointment");
+  }
+
+  if (existingMessage.senderId !== userId) {
+    throw new ApiError(httpStatus.FORBIDDEN, "You can only delete your own messages");
+  }
+
+  const deletedMessage = await prisma.chatMessage.update({
+    where: { id: payload.messageId },
+    data: {
+      isDeleted: true,
+      deletedAt: new Date(),
+      message: "This message was deleted",
+      attachmentUrl: null,
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          image: true,
+        },
+      },
+      receiver: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          image: true,
+        },
+      },
+    },
+  });
+
+  return deletedMessage;
+};
+
 export const ChatService = {
   verifyAppointmentParticipant,
   saveMessage,
   getChatHistory,
   markMessagesAsRead,
   getUnreadMessageCount,
+  editMessage,
+  deleteMessage,
 };

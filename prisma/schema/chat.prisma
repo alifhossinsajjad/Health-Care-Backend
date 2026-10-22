@@ -15,6 +15,12 @@ model ChatMessage {
     isRead        Boolean     @default(false)
     readAt        DateTime?
 
+    isEdited      Boolean     @default(false)
+    editedAt      DateTime?
+
+    isDeleted     Boolean     @default(false)
+    deletedAt     DateTime?
+
     createdAt     DateTime    @default(now())
     updatedAt     DateTime    @updatedAt
 
@@ -22,5 +28,6 @@ model ChatMessage {
     @@index([senderId])
     @@index([receiverId])
     @@index([isRead])
+    @@index([isDeleted])
     @@map("chat_messages")
 }

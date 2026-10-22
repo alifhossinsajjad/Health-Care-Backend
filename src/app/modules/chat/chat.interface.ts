@@ -20,3 +20,14 @@ export interface IMessageFilterOptions {
   page?: number;
   limit?: number;
 }
+
+export interface IEditMessagePayload {
+  messageId: string;
+  appointmentId: string;
+  newMessage: string;
+}
+
+export interface IDeleteMessagePayload {
+  messageId: string;
+  appointmentId: string;
+}

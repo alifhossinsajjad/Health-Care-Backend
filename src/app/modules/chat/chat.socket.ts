@@ -1,6 +1,12 @@
 import { Server, Socket } from "socket.io";
 import { ChatService } from "./chat.service";
-import { ISendMessagePayload, ITypingPayload, IJoinRoomPayload } from "./chat.interface";
+import {
+  ISendMessagePayload,
+  ITypingPayload,
+  IJoinRoomPayload,
+  IEditMessagePayload,
+  IDeleteMessagePayload,
+} from "./chat.interface";
 
 export const initChatSocket = (io: Server) => {
   io.on("connection", (socket: Socket) => {
@@ -122,7 +128,53 @@ export const initChatSocket = (io: Server) => {
     });
 
     /**
-     * 5. Leave Consultation Room
+     * 5. Edit Message (Meta Messenger-like)
+     */
+    socket.on("chat:edit", async (payload: IEditMessagePayload, callback) => {
+      try {
+        if (!payload?.messageId || !payload?.appointmentId || !payload?.newMessage?.trim()) {
+          if (callback) callback({ success: false, message: "Valid messageId, appointmentId and newMessage are required" });
+          return;
+        }
+
+        const updatedMessage = await ChatService.editMessage(user.id, payload);
+        const roomName = `appointment:${payload.appointmentId}`;
+        io.to(roomName).emit("chat:edited", updatedMessage);
+
+        if (callback) callback({ success: true, data: updatedMessage });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to edit message";
+        if (callback) callback({ success: false, message: errorMessage });
+      }
+    });
+
+    /**
+     * 6. Delete / Unsend Message for Everyone (Meta Messenger-like)
+     */
+    socket.on("chat:delete", async (payload: IDeleteMessagePayload, callback) => {
+      try {
+        if (!payload?.messageId || !payload?.appointmentId) {
+          if (callback) callback({ success: false, message: "Valid messageId and appointmentId are required" });
+          return;
+        }
+
+        const deletedMessage = await ChatService.deleteMessage(user.id, payload);
+        const roomName = `appointment:${payload.appointmentId}`;
+        io.to(roomName).emit("chat:deleted", {
+          messageId: payload.messageId,
+          appointmentId: payload.appointmentId,
+          deletedMessage,
+        });
+
+        if (callback) callback({ success: true, data: deletedMessage });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete message";
+        if (callback) callback({ success: false, message: errorMessage });
+      }
+    });
+
+    /**
+     * 7. Leave Consultation Room
      */
     socket.on("leave:appointment", (payload: { appointmentId: string }) => {
       if (!payload?.appointmentId) return;
