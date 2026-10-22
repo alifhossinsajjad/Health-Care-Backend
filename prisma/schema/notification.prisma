@@ -16,3 +16,18 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
 }
+
+model NotificationPreference {
+  id                   String   @id @default(uuid(7))
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailAlerts          Boolean  @default(true)
+  inAppAlerts          Boolean  @default(true)
+  appointmentReminders Boolean  @default(true)
+  marketingAlerts      Boolean  @default(false)
+  soundEnabled         Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("notification_preferences")
+}

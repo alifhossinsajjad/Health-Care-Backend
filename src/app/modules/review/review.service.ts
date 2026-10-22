@@ -8,8 +8,9 @@ import { prisma } from "../../lib/prisma";
 import { IPaginationOptions } from "../../interfaces/pagination";
 import { paginationHelper } from "../../../shared/paginationHelper";
 import { ICreateReviewPayload, IUpdateReviewPayload } from "./review.interfce";
-import { AppointmentStatus, PaymentStatus, Role } from "../../../../generated/prisma/enums";
+import { AppointmentStatus, PaymentStatus, Role, NotificationType } from "../../../../generated/prisma/enums";
 import { Prisma } from "../../../../generated/prisma/client";
+import { NotificationService } from "../notification/notification.service";
 
 const giveReview = async (user: IRequestUser, payload: ICreateReviewPayload) => {
   const patientData = await prisma.patient.findUniqueOrThrow({
@@ -21,6 +22,9 @@ const giveReview = async (user: IRequestUser, payload: ICreateReviewPayload) => 
   const appointmentData = await prisma.appointment.findUniqueOrThrow({
     where: {
       id: payload.appointmentId,
+    },
+    include: {
+      doctor: true,
     },
   });
 
@@ -78,6 +82,25 @@ const giveReview = async (user: IRequestUser, payload: ICreateReviewPayload) => 
 
     return review;
   });
+
+  // Dispatch Real-time Notification to Doctor
+  NotificationService.createNotification({
+    userId: appointmentData.doctor.userId,
+    type: NotificationType.NEW_REVIEW,
+    title: `New ${payload.rating}★ Review Received`,
+    message: `${patientData.name} left a ${payload.rating}-star review: "${payload.comment?.slice(0, 80) || "Great consultation!"}"`,
+    link: `/doctor/reviews`,
+    metadata: {
+      reviewId: result.id,
+      appointmentId: appointmentData.id,
+      patientId: patientData.id,
+      patientName: patientData.name,
+      rating: payload.rating,
+      comment: payload.comment,
+    },
+  }).catch((err) =>
+    console.warn("⚠️ [ReviewService] Failed to notify doctor of new review:", err),
+  );
 
   return result;
 };

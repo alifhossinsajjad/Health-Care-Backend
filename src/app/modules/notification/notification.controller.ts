@@ -91,6 +91,37 @@ const clearAllNotifications = catchAsync(async (req: Request, res: Response) => 
   });
 });
 
+const getMyNotificationPreferences = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user as IRequestUser;
+    const result = await NotificationService.getMyNotificationPreferences(user.id);
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Notification preferences retrieved successfully",
+      data: result,
+    });
+  },
+);
+
+const updateNotificationPreferences = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user as IRequestUser;
+    const result = await NotificationService.updateNotificationPreferences(
+      user.id,
+      req.body,
+    );
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Notification preferences updated successfully",
+      data: result,
+    });
+  },
+);
+
 export const NotificationController = {
   getMyNotifications,
   getUnreadCount,
@@ -98,4 +129,6 @@ export const NotificationController = {
   markAllAsRead,
   deleteNotification,
   clearAllNotifications,
+  getMyNotificationPreferences,
+  updateNotificationPreferences,
 };

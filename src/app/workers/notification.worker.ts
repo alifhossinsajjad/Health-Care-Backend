@@ -5,13 +5,18 @@ import {
 } from "../queues/notification.queue";
 import { redisConnectionOptions } from "../../config/redis.config";
 import { prisma } from "../lib/prisma";
-import { UserStatus } from "../../../generated/prisma/enums";
+import {
+  UserStatus,
+  AppointmentStatus,
+  NotificationType,
+} from "../../../generated/prisma/enums";
 import { getIO } from "../../socket";
 
 export const notificationWorker = new Worker<INotificationJobData>(
   NOTIFICATION_QUEUE_NAME,
   async (job: Job<INotificationJobData>) => {
-    const { type, role, userIds, notificationType, title, message, link, metadata } = job.data;
+    const { type, role, userIds, notificationType, title, message, link, metadata } =
+      job.data;
     console.log(`🔔 [NotificationWorker] Processing job ${job.id} (${type})`);
 
     // 1. Broadcast to an entire user Role (e.g., all Doctors when new schedules are added)
@@ -29,7 +34,9 @@ export const notificationWorker = new Worker<INotificationJobData>(
         return { count: 0 };
       }
 
-      console.log(`📢 [NotificationWorker] Broadcasting to ${users.length} users with role ${role}`);
+      console.log(
+        `📢 [NotificationWorker] Broadcasting to ${users.length} users with role ${role}`,
+      );
 
       // Batch insert in chunks of 500 for optimal Postgres performance
       const chunkSize = 500;
@@ -61,7 +68,10 @@ export const notificationWorker = new Worker<INotificationJobData>(
           createdAt: new Date().toISOString(),
         });
       } catch (socketErr) {
-        console.warn("⚠️ [NotificationWorker] Socket broadcast error:", (socketErr as Error).message);
+        console.warn(
+          "⚠️ [NotificationWorker] Socket broadcast error:",
+          (socketErr as Error).message,
+        );
       }
 
       return { count: users.length };
@@ -95,10 +105,99 @@ export const notificationWorker = new Worker<INotificationJobData>(
           });
         });
       } catch (socketErr) {
-        console.warn("⚠️ [NotificationWorker] Socket batch error:", (socketErr as Error).message);
+        console.warn(
+          "⚠️ [NotificationWorker] Socket batch error:",
+          (socketErr as Error).message,
+        );
       }
 
       return { count: userIds.length };
+    }
+
+    // 3. 15-Minute Countdown Appointment Reminder
+    if (type === "APPOINTMENT_REMINDER" && job.data.appointmentId) {
+      const {
+        appointmentId,
+        doctorUserId,
+        patientUserId,
+        doctorName,
+        patientName,
+        link: reminderLink,
+      } = job.data;
+
+      // Defensive check: Verify appointment is still active and SCHEDULED (not canceled)
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { status: true },
+      });
+
+      if (!appointment || appointment.status !== AppointmentStatus.SCHEDULED) {
+        console.log(
+          `⏩ [NotificationWorker] Skipping reminder for appointment ${appointmentId}: status is ${appointment?.status || "NOT_FOUND"}`,
+        );
+        return { skipped: true };
+      }
+
+      const notifications = [];
+
+      // Create notification for Doctor
+      if (doctorUserId) {
+        notifications.push({
+          userId: doctorUserId,
+          type: NotificationType.APPOINTMENT_REMINDER,
+          title: "Consultation in 15 Minutes",
+          message: `Your video consultation with ${patientName || "Patient"} starts in 15 minutes.`,
+          link: reminderLink || `/consultation/${appointmentId}`,
+          metadata: { appointmentId, role: "DOCTOR" },
+        });
+      }
+
+      // Create notification for Patient
+      if (patientUserId) {
+        notifications.push({
+          userId: patientUserId,
+          type: NotificationType.APPOINTMENT_REMINDER,
+          title: "Consultation in 15 Minutes",
+          message: `Your video consultation with Dr. ${doctorName || "Doctor"} starts in 15 minutes. Please join the waiting room.`,
+          link: reminderLink || `/consultation/${appointmentId}`,
+          metadata: { appointmentId, role: "PATIENT" },
+        });
+      }
+
+      if (notifications.length > 0) {
+        await prisma.notification.createMany({
+          data: notifications,
+        });
+
+        try {
+          const io = getIO();
+          if (doctorUserId) {
+            io.to(`user:${doctorUserId}`).emit("notification:new", {
+              type: NotificationType.APPOINTMENT_REMINDER,
+              title: "Consultation in 15 Minutes",
+              message: `Your video consultation with ${patientName || "Patient"} starts in 15 minutes.`,
+              link: reminderLink || `/consultation/${appointmentId}`,
+              createdAt: new Date().toISOString(),
+            });
+          }
+          if (patientUserId) {
+            io.to(`user:${patientUserId}`).emit("notification:new", {
+              type: NotificationType.APPOINTMENT_REMINDER,
+              title: "Consultation in 15 Minutes",
+              message: `Your video consultation with Dr. ${doctorName || "Doctor"} starts in 15 minutes. Please join the waiting room.`,
+              link: reminderLink || `/consultation/${appointmentId}`,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        } catch (socketErr) {
+          console.warn(
+            "⚠️ [NotificationWorker] Socket reminder emit error:",
+            (socketErr as Error).message,
+          );
+        }
+      }
+
+      return { reminded: true, appointmentId };
     }
 
     return { processed: true };

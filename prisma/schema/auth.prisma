@@ -21,7 +21,8 @@ model User {
   receivedMessages    ChatMessage[] @relation("ReceivedMessages")
   initiatedCalls      VideoConsultationLog[] @relation("CallerConsultations")
   receivedCalls       VideoConsultationLog[] @relation("ReceiverConsultations")
-  notifications       Notification[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
 
   @@unique([email])
   @@map("user")

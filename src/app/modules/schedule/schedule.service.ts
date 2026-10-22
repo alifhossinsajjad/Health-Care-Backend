@@ -82,21 +82,26 @@ const createSchedule = async (
     },
   });
 
-  // Broadcast non-blocking alert to all active DOCTOR users via BullMQ
+  // Broadcast non-blocking alert to all active DOCTOR users via BullMQ with deduplication
   if (createdSchedules.length > 0) {
-    NotificationService.broadcastToRole(Role.DOCTOR, {
-      notificationType: NotificationType.NEW_SCHEDULES_AVAILABLE,
-      title: "New Consultation Schedules Published",
-      message: `${createdSchedules.length} new consultation slots from ${startDate} to ${endDate} (${startTime} - ${endTime}) are now available. Check and set your availability!`,
-      link: "/doctor/schedules",
-      metadata: {
-        startDate,
-        endDate,
-        startTime,
-        endTime,
-        slotsCount: createdSchedules.length,
+    const dedupJobId = `notif-schedules-${startDate}-${endDate}-${startTime}-${endTime}`;
+    NotificationService.broadcastToRole(
+      Role.DOCTOR,
+      {
+        notificationType: NotificationType.NEW_SCHEDULES_AVAILABLE,
+        title: "New Consultation Schedules Published",
+        message: `${createdSchedules.length} new consultation slots from ${startDate} to ${endDate} (${startTime} - ${endTime}) are now available. Check and set your availability!`,
+        link: "/doctor/schedules",
+        metadata: {
+          startDate,
+          endDate,
+          startTime,
+          endTime,
+          slotsCount: createdSchedules.length,
+        },
       },
-    }).catch((err) =>
+      { jobId: dedupJobId },
+    ).catch((err) =>
       console.warn("⚠️ [ScheduleService] Failed to broadcast new schedules notification:", err),
     );
   }

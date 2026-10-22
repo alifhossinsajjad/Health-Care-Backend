@@ -26,28 +26,42 @@ router.get(
   NotificationController.getUnreadCount,
 );
 
-// 3. Mark all notifications as read
+// 3. Get user notification preferences
+router.get(
+  "/preferences",
+  authMiddleware(...allRoles),
+  NotificationController.getMyNotificationPreferences,
+);
+
+// 4. Update user notification preferences
+router.patch(
+  "/preferences",
+  authMiddleware(...allRoles),
+  NotificationController.updateNotificationPreferences,
+);
+
+// 5. Mark all notifications as read
 router.patch(
   "/mark-all-as-read",
   authMiddleware(...allRoles),
   NotificationController.markAllAsRead,
 );
 
-// 4. Mark specific notification as read
+// 6. Mark specific notification as read
 router.patch(
   "/:id/read",
   authMiddleware(...allRoles),
   NotificationController.markAsRead,
 );
 
-// 5. Clear all notifications
+// 7. Clear all notifications
 router.delete(
   "/clear-all",
   authMiddleware(...allRoles),
   NotificationController.clearAllNotifications,
 );
 
-// 6. Delete specific notification
+// 8. Delete specific notification
 router.delete(
   "/:id",
   authMiddleware(...allRoles),

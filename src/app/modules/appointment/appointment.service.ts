@@ -18,6 +18,10 @@ import { IBookAppointmentPayload } from "./appointment.interface";
 import crypto from "crypto";
 import { stripe } from "../../../config/stripe.config";
 import { NotificationService } from "../notification/notification.service";
+import {
+  scheduleAppointmentReminder,
+  cancelAppointmentReminder,
+} from "../../queues/notification.queue";
 
 
 // 1. Book Appointment (Pay Now)
@@ -299,6 +303,24 @@ const bookAppointmentWithPayLater = async (
     console.warn("⚠️ [AppointmentService] Failed to notify doctor:", err),
   );
 
+  // Schedule BullMQ 15-minute countdown reminder
+  const scheduleData = await prisma.schedule.findUnique({
+    where: { id: payload.scheduleId },
+  });
+
+  if (scheduleData) {
+    scheduleAppointmentReminder({
+      id: result.appointment.id,
+      doctorUserId: doctor.userId,
+      patientUserId: user.id,
+      startDateTime: scheduleData.startDateTime,
+      doctorName: doctor.name,
+      patientName: patient.name,
+    }).catch((err) =>
+      console.warn("⚠️ [AppointmentService] Failed to schedule reminder:", err),
+    );
+  }
+
   return result;
 };
 
@@ -475,7 +497,7 @@ const changeAppointmentStatus = async (
 ) => {
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
-    include: { doctor: true },
+    include: { doctor: true, patient: true, schedule: true },
   });
 
   if (!appointment)
@@ -489,6 +511,67 @@ const changeAppointmentStatus = async (
     where: { id: appointmentId },
     data: { status: payload.status },
   });
+
+  // Handle Cancellation
+  if (payload.status === AppointmentStatus.CANCELED) {
+    // Cancel any pending BullMQ 15-minute countdown reminder
+    cancelAppointmentReminder(appointmentId).catch((err) =>
+      console.warn("⚠️ [AppointmentService] Failed to cancel reminder:", err),
+    );
+
+    // Release schedule slot
+    await prisma.doctorSchedules.updateMany({
+      where: {
+        doctorId: appointment.doctorId,
+        scheduleId: appointment.scheduleId,
+      },
+      data: { isBooked: false },
+    });
+
+    const isCancelledByDoctor = user.id === appointment.doctor.userId;
+
+    if (isCancelledByDoctor) {
+      // Notify Patient
+      NotificationService.createNotification({
+        userId: appointment.patient.userId,
+        type: NotificationType.APPOINTMENT_CANCELLED,
+        title: "Appointment Cancelled",
+        message: `Dr. ${appointment.doctor.name} has cancelled your appointment scheduled for ${new Date(appointment.schedule.startDateTime).toLocaleString()}.`,
+        link: "/dashboard/my-appointments",
+        metadata: {
+          appointmentId: appointment.id,
+          doctorId: appointment.doctor.id,
+          doctorName: appointment.doctor.name,
+          startDateTime: appointment.schedule.startDateTime,
+        },
+      }).catch((err) =>
+        console.warn(
+          "⚠️ [AppointmentService] Failed to notify patient of cancellation:",
+          err,
+        ),
+      );
+    } else {
+      // Cancelled by patient: notify Doctor
+      NotificationService.createNotification({
+        userId: appointment.doctor.userId,
+        type: NotificationType.APPOINTMENT_CANCELLED,
+        title: "Appointment Cancelled",
+        message: `Patient ${appointment.patient.name} has cancelled the appointment for ${new Date(appointment.schedule.startDateTime).toLocaleString()}.`,
+        link: "/doctor/appointments",
+        metadata: {
+          appointmentId: appointment.id,
+          patientId: appointment.patient.id,
+          patientName: appointment.patient.name,
+          startDateTime: appointment.schedule.startDateTime,
+        },
+      }).catch((err) =>
+        console.warn(
+          "⚠️ [AppointmentService] Failed to notify doctor of cancellation:",
+          err,
+        ),
+      );
+    }
+  }
 
   return updatedAppointment;
 };

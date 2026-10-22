@@ -9,6 +9,7 @@ import {
   NotificationType,
 } from "../../../../generated/prisma/enums";
 import { NotificationService } from "../notification/notification.service";
+import { scheduleAppointmentReminder } from "../../queues/notification.queue";
 
 const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
   const existingPayment = await prisma.payment.findFirst({
@@ -123,6 +124,18 @@ const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
           },
         }).catch((err) =>
           console.warn("⚠️ [PaymentService] Failed to notify patient of payment:", err),
+        );
+
+        // Schedule BullMQ 15-minute countdown reminder
+        scheduleAppointmentReminder({
+          id: appointment.id,
+          doctorUserId: appointment.doctor.userId,
+          patientUserId: appointment.patient.userId,
+          startDateTime: appointment.schedule.startDateTime,
+          doctorName: appointment.doctor.name,
+          patientName: appointment.patient.name,
+        }).catch((err) =>
+          console.warn("⚠️ [PaymentService] Failed to schedule reminder on paid appointment:", err),
         );
       }
 

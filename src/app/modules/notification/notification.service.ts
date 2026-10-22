@@ -55,12 +55,16 @@ const broadcastToRole = async (
     link?: string;
     metadata?: Record<string, unknown>;
   },
+  options?: { jobId?: string; delay?: number; priority?: number },
 ) => {
-  return await addNotificationJob({
-    type: "BROADCAST_TO_ROLE",
-    role,
-    ...payload,
-  });
+  return await addNotificationJob(
+    {
+      type: "BROADCAST_TO_ROLE",
+      role,
+      ...payload,
+    },
+    options,
+  );
 };
 
 /**
@@ -75,12 +79,16 @@ const batchNotifyUsers = async (
     link?: string;
     metadata?: Record<string, unknown>;
   },
+  options?: { jobId?: string; delay?: number; priority?: number },
 ) => {
-  return await addNotificationJob({
-    type: "BATCH_NOTIFY_USERS",
-    userIds,
-    ...payload,
-  });
+  return await addNotificationJob(
+    {
+      type: "BATCH_NOTIFY_USERS",
+      userIds,
+      ...payload,
+    },
+    options,
+  );
 };
 
 /**
@@ -266,6 +274,46 @@ const clearAllNotifications = async (userId: string) => {
   };
 };
 
+/**
+ * 10. Get user notification preferences (or default if not yet created)
+ */
+const getMyNotificationPreferences = async (userId: string) => {
+  let preference = await prisma.notificationPreference.findUnique({
+    where: { userId },
+  });
+
+  if (!preference) {
+    preference = await prisma.notificationPreference.create({
+      data: { userId },
+    });
+  }
+
+  return preference;
+};
+
+/**
+ * 11. Update user notification preferences
+ */
+const updateNotificationPreferences = async (
+  userId: string,
+  payload: {
+    emailAlerts?: boolean;
+    inAppAlerts?: boolean;
+    appointmentReminders?: boolean;
+    marketingAlerts?: boolean;
+    soundEnabled?: boolean;
+  },
+) => {
+  return await prisma.notificationPreference.upsert({
+    where: { userId },
+    create: {
+      userId,
+      ...payload,
+    },
+    update: payload,
+  });
+};
+
 export const NotificationService = {
   createNotification,
   broadcastToRole,
@@ -276,4 +324,6 @@ export const NotificationService = {
   markAllAsRead,
   deleteNotification,
   clearAllNotifications,
+  getMyNotificationPreferences,
+  updateNotificationPreferences,
 };

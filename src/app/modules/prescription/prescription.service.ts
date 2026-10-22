@@ -9,12 +9,13 @@ import { ICreatePrescriptionPayload } from "./prescription.interface";
 import { generatePrescriptionPDF } from "./prescription.utils";
 import { IPaginationOptions } from "../../interfaces/pagination";
 import { paginationHelper } from "../../../shared/paginationHelper";
-import { AppointmentStatus, Role } from "../../../../generated/prisma/enums";
+import { AppointmentStatus, Role, NotificationType } from "../../../../generated/prisma/enums";
 import {
   deleteFileFromCloudinary,
   uploadFileToCloudinary,
 } from "../../../config/cloudinary.config";
 import { Prisma } from "../../../../generated/prisma/client";
+import { NotificationService } from "../notification/notification.service";
 
 const givePrescription = async (
   user: IRequestUser,
@@ -175,6 +176,25 @@ const givePrescription = async (
     where: { id: appointmentData.id },
     data: { status: AppointmentStatus.COMPLETED },
   });
+
+  // Step 6: Dispatch Real-time In-App & Socket Notification to Patient
+  NotificationService.createNotification({
+    userId: appointmentData.patient.userId,
+    type: NotificationType.PRESCRIPTION_ISSUED,
+    title: "New Prescription Available",
+    message: `Dr. ${doctorData.name} has issued your prescription. Click to view and download.`,
+    link: pdfUrl || `/dashboard/my-prescriptions`,
+    metadata: {
+      prescriptionId: prescription.id,
+      appointmentId: appointmentData.id,
+      doctorId: doctorData.id,
+      doctorName: doctorData.name,
+      pdfUrl: pdfUrl || null,
+      followUpDate: followUpDate.toISOString(),
+    },
+  }).catch((err) =>
+    console.warn("⚠️ [PrescriptionService] Failed to notify patient:", err),
+  );
 
   return updatedPrescription;
 };
