@@ -5,10 +5,11 @@ import {
   ICallInitiatePayload,
   ICallAcceptPayload,
   ICallRejectPayload,
+  ICallCancelPayload,
   ICallEndPayload,
   IIceServerConfig,
 } from "./webrtc.interface";
-import { CallStatus, AppointmentStatus, Role } from "../../../../generated/prisma/enums";
+import { CallStatus, AppointmentStatus, Role, PaymentStatus } from "../../../../generated/prisma/enums";
 
 /**
  * Validates appointment ownership and videoCallingId integrity.
@@ -37,6 +38,7 @@ const validateConsultationAccess = async (
           profilePhoto: true,
         },
       },
+      schedule: true,
     },
   });
 
@@ -49,6 +51,52 @@ const validateConsultationAccess = async (
       httpStatus.BAD_REQUEST,
       "Cannot initiate or join video call for a canceled appointment",
     );
+  }
+
+  if (appointment.status === AppointmentStatus.COMPLETED) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "This consultation has already been completed",
+    );
+  }
+
+  if (appointment.paymentStatus !== PaymentStatus.PAID) {
+    throw new ApiError(
+      httpStatus.PAYMENT_REQUIRED,
+      "Consultation room is only accessible after payment is completed",
+    );
+  }
+
+  // Time window validation:
+  // Allow joining up to 15 minutes before startDateTime, up to 30 minutes after endDateTime (grace period)
+  if (appointment.schedule) {
+    const now = new Date().getTime();
+    const startTime = new Date(appointment.schedule.startDateTime).getTime();
+    const endTime = new Date(appointment.schedule.endDateTime).getTime();
+    const earlyJoinBufferMs = 15 * 60 * 1000; // 15 mins before
+    const gracePeriodMs = 30 * 60 * 1000;     // 30 mins after end
+
+    if (process.env.NODE_ENV === "production") {
+      if (now < startTime - earlyJoinBufferMs) {
+        throw new ApiError(
+          httpStatus.BAD_REQUEST,
+          `Consultation room will open 15 minutes before scheduled start time (${new Date(appointment.schedule.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`,
+        );
+      }
+
+      if (now > endTime + gracePeriodMs) {
+        throw new ApiError(
+          httpStatus.BAD_REQUEST,
+          "The scheduled consultation window for this appointment has expired",
+        );
+      }
+    } else {
+      if (now > endTime + gracePeriodMs) {
+        console.warn(
+          `⚠️ [WebRTC Dev Warning] Joining appointment ${appointmentId} with expired schedule in non-production mode`,
+        );
+      }
+    }
   }
 
   if (videoCallingId && appointment.videoCallingId !== videoCallingId) {
@@ -193,13 +241,52 @@ const rejectCallSession = async (
 };
 
 /**
+ * Marks call session as cancelled when caller hangs up before answer.
+ */
+const cancelCallSession = async (
+  userId: string,
+  payload: ICallCancelPayload,
+) => {
+  const { receiverUserId } = await validateConsultationAccess(
+    userId,
+    payload.appointmentId,
+  );
+
+  const activeCall = payload.callId
+    ? await prisma.videoConsultationLog.findUnique({ where: { id: payload.callId } })
+    : await prisma.videoConsultationLog.findFirst({
+        where: {
+          appointmentId: payload.appointmentId,
+          callerId: userId,
+          status: CallStatus.INITIATED,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+  if (activeCall) {
+    await prisma.videoConsultationLog.update({
+      where: { id: activeCall.id },
+      data: {
+        status: CallStatus.MISSED,
+        endedAt: new Date(),
+      },
+    });
+  }
+
+  return { receiverUserId };
+};
+
+/**
  * Ends a video consultation and records total duration for audit and billing.
  */
 const endCallSession = async (
   userId: string,
   payload: ICallEndPayload,
 ) => {
-  await validateConsultationAccess(userId, payload.appointmentId);
+  const { patientUserId, doctorUserId } = await validateConsultationAccess(
+    userId,
+    payload.appointmentId,
+  );
 
   // Find the active or latest call log
   const activeCall = payload.callId
@@ -213,7 +300,12 @@ const endCallSession = async (
       });
 
   if (!activeCall) {
-    return null;
+    return {
+      callLog: null,
+      durationSec: 0,
+      patientUserId,
+      doctorUserId,
+    };
   }
 
   const endedAt = new Date();
@@ -234,6 +326,8 @@ const endCallSession = async (
   return {
     callLog: updatedLog,
     durationSec,
+    patientUserId,
+    doctorUserId,
   };
 };
 
@@ -278,6 +372,7 @@ export const WebRtcService = {
   createCallSession,
   acceptCallSession,
   rejectCallSession,
+  cancelCallSession,
   endCallSession,
   getIceServers,
   getConsultationLogs,

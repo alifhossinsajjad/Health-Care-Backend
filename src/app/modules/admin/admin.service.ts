@@ -9,8 +9,11 @@ import { ApiError } from "../../errors/ApiError";
 
 import httpStatus from "http-status";
 import { deleteFileFromCloudinary } from "../../../config/cloudinary.config";
-import { Role, UserStatus } from "../../../../generated/prisma/enums";
+import { Role, UserStatus, NotificationType } from "../../../../generated/prisma/enums";
 import { IRequestUser } from "../../interfaces/requestUser.interface";
+import { NotificationService } from "../notification/notification.service";
+import { getIO } from "../../../socket";
+import { queueEmail } from "../../utils/email";
 import {
   getStoredRequestLogs,
   clearStoredRequestLogs,
@@ -188,35 +191,127 @@ const updateMyProfile = async (user: any, payload: any) => {
 
 
 
-const changeUserStatus = async (user: IRequestUser, payload: { userId: string; userStatus: UserStatus }) => {
-    const { userId, userStatus } = payload;
+const changeUserStatus = async (
+  user: IRequestUser,
+  payload: { userId: string; userStatus: UserStatus; reason?: string },
+) => {
+  const { userId, userStatus, reason } = payload;
 
-    const userToChangeStatus = await prisma.user.findUniqueOrThrow({
-        where: { id: userId },
-    });
+  const userToChangeStatus = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+  });
 
-    if (user.id === userId) {
-        throw new ApiError(httpStatus.BAD_REQUEST, "You cannot change your own status");
+  if (user.id === userId) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "You cannot change your own status",
+    );
+  }
+
+  if (
+    user.role === Role.ADMIN &&
+    userToChangeStatus.role === Role.SUPER_ADMIN
+  ) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "You cannot change the status of super admin. Only super admin can change the status of another super admin",
+    );
+  }
+
+  if (user.role === Role.ADMIN && userToChangeStatus.role === Role.ADMIN) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "You cannot change the status of another admin. Only super admin can change the status of another admin",
+    );
+  }
+
+  if (userStatus === UserStatus.DELETED) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "You cannot set user status to deleted. To delete a user, you have to use role specific delete api.",
+    );
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { status: userStatus },
+  });
+
+  // Handle Ban / Block Notification, Live Socket Kick & Automated Notice Email
+  if (userStatus === UserStatus.BLOCKED) {
+    const banReason =
+      reason?.trim() ||
+      "Your account has been suspended by an administrator due to a violation of our healthcare platform terms and safety policies.";
+
+    // 1. Create In-App Notification record
+    await NotificationService.createNotification({
+      userId: updatedUser.id,
+      type: NotificationType.USER_BLOCKED,
+      title: "Account Suspended / Blocked",
+      message: banReason,
+      link: "/support",
+      metadata: {
+        reason: banReason,
+        bannedBy: user.email,
+        bannedRole: user.role,
+        blockedAt: new Date().toISOString(),
+      },
+    }).catch((err) =>
+      console.warn("⚠️ [AdminService] Failed to create block notification:", err),
+    );
+
+    // 2. Real-time forced live kick/logout socket event
+    try {
+      const io = getIO();
+      io.to(`user:${updatedUser.id}`).emit("user:blocked", {
+        reason: banReason,
+        blockedAt: new Date().toISOString(),
+      });
+    } catch (sockErr) {
+      console.warn(
+        "⚠️ [AdminService] Socket user:blocked emit error:",
+        (sockErr as Error).message,
+      );
     }
 
-    if (user.role === Role.ADMIN && userToChangeStatus.role === Role.SUPER_ADMIN) {
-        throw new ApiError(httpStatus.BAD_REQUEST, "You cannot change the status of super admin. Only super admin can change the status of another super admin");
-    }
+    // 3. Queue ban email via BullMQ
+    queueEmail({
+      to: userToChangeStatus.email,
+      subject: "Account Suspension Notice - Health Care Portal",
+      templateName: "account-suspended",
+      templateData: {
+        name: userToChangeStatus.name || "Valued User",
+        email: userToChangeStatus.email,
+        reason: banReason,
+      },
+    }).catch((emailErr) =>
+      console.warn(
+        "⚠️ [AdminService] Failed to queue suspension email:",
+        emailErr,
+      ),
+    );
+  } else if (userStatus === UserStatus.ACTIVE) {
+    // Re-activated notification
+    NotificationService.createNotification({
+      userId: updatedUser.id,
+      type: NotificationType.SYSTEM,
+      title: "Account Re-activated",
+      message:
+        "Your account has been re-activated by an administrator. You now have full access to platform features.",
+      link: "/dashboard",
+      metadata: {
+        activatedBy: user.email,
+        activatedAt: new Date().toISOString(),
+      },
+    }).catch((err) =>
+      console.warn(
+        "⚠️ [AdminService] Failed to create reactivation notification:",
+        err,
+      ),
+    );
+  }
 
-    if (user.role === Role.ADMIN && userToChangeStatus.role === Role.ADMIN) {
-        throw new ApiError(httpStatus.BAD_REQUEST, "You cannot change the status of another admin. Only super admin can change the status of another admin");
-    }
-
-    if (userStatus === UserStatus.DELETED) {
-        throw new ApiError(httpStatus.BAD_REQUEST, "You cannot set user status to deleted. To delete a user, you have to use role specific delete api.");
-    }
-
-    const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: { status: userStatus },
-    });
-
-    return updatedUser;
+  return updatedUser;
 };
 
 const changeUserRole = async (user: IRequestUser, payload: { userId: string; role: Role }) => {

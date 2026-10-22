@@ -41,11 +41,8 @@
     "moduleDetection": "force",
     "moduleResolution": "bundler",
     "skipLibCheck": true,
-      "esModuleInterop": true
+    "esModuleInterop": true
   },
-  "include": [
-    "src/**/*",
-    "prisma.config.ts"
-  ],
+  "include": ["src/**/*", "prisma.config.ts"],
   "exclude": ["node_modules", "dist", "generated/prisma"]
 }

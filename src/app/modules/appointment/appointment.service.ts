@@ -3,6 +3,7 @@ import {
   AppointmentStatus,
   PaymentStatus,
   Role,
+  NotificationType,
 } from "../../../../generated/prisma/enums";
 import { IPaginationOptions } from "../../interfaces/pagination";
 import { IRequestUser } from "../../interfaces/requestUser.interface";
@@ -16,6 +17,7 @@ import { envVars } from "../../../config/env";
 import { IBookAppointmentPayload } from "./appointment.interface";
 import crypto from "crypto";
 import { stripe } from "../../../config/stripe.config";
+import { NotificationService } from "../notification/notification.service";
 
 
 // 1. Book Appointment (Pay Now)
@@ -163,6 +165,23 @@ const bookAppointment = async (
     throw new ApiError(status.INTERNAL_SERVER_ERROR, "Failed to initiate payment gateway");
   }
 
+  // Notify doctor in real-time
+  NotificationService.createNotification({
+    userId: doctor.userId,
+    type: NotificationType.APPOINTMENT_BOOKED,
+    title: "New Appointment Booked",
+    message: `Patient ${patient.name} has initiated an appointment with you.`,
+    link: "/doctor/appointments",
+    metadata: {
+      appointmentId: result.appointment.id,
+      patientId: patient.id,
+      patientName: patient.name,
+      scheduleId: payload.scheduleId,
+    },
+  }).catch((err) =>
+    console.warn("⚠️ [AppointmentService] Failed to notify doctor:", err),
+  );
+
   return {
     appointment: result.appointment,
     payment: result.payment,
@@ -262,6 +281,23 @@ const bookAppointmentWithPayLater = async (
       payment,
     };
   });
+
+  // Notify doctor in real-time (Pay Later)
+  NotificationService.createNotification({
+    userId: doctor.userId,
+    type: NotificationType.APPOINTMENT_BOOKED,
+    title: "New Appointment Booked (Pay Later)",
+    message: `Patient ${patient.name} has booked an appointment with you (Payment pending).`,
+    link: "/doctor/appointments",
+    metadata: {
+      appointmentId: result.appointment.id,
+      patientId: patient.id,
+      patientName: patient.name,
+      scheduleId: payload.scheduleId,
+    },
+  }).catch((err) =>
+    console.warn("⚠️ [AppointmentService] Failed to notify doctor:", err),
+  );
 
   return result;
 };

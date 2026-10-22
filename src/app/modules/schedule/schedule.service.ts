@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Schedule } from "../../../../generated/prisma/client";
+import { Role, NotificationType } from "../../../../generated/prisma/enums";
 import { ICreateSchedulePayload } from "./schedule.interface";
 import { prisma } from "../../lib/prisma";
 import { IPaginationOptions } from "../../interfaces/pagination";
@@ -8,6 +9,7 @@ import { PrismaQueryBuilder } from "../../../shared/PrismaQueryBuilder";
 import { ApiError } from "../../errors/ApiError";
 import { convertDateTime } from "./schedule.utils";
 import { scheduleIncludeConfig } from "./schedule.constant";
+import { NotificationService } from "../notification/notification.service";
 
 const createSchedule = async (
   payload: ICreateSchedulePayload,
@@ -79,6 +81,25 @@ const createSchedule = async (
       startDateTime: "asc",
     },
   });
+
+  // Broadcast non-blocking alert to all active DOCTOR users via BullMQ
+  if (createdSchedules.length > 0) {
+    NotificationService.broadcastToRole(Role.DOCTOR, {
+      notificationType: NotificationType.NEW_SCHEDULES_AVAILABLE,
+      title: "New Consultation Schedules Published",
+      message: `${createdSchedules.length} new consultation slots from ${startDate} to ${endDate} (${startTime} - ${endTime}) are now available. Check and set your availability!`,
+      link: "/doctor/schedules",
+      metadata: {
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        slotsCount: createdSchedules.length,
+      },
+    }).catch((err) =>
+      console.warn("⚠️ [ScheduleService] Failed to broadcast new schedules notification:", err),
+    );
+  }
 
   return createdSchedules;
 };

@@ -17,9 +17,7 @@ export const appointmentWorker = new Worker<IAppointmentJobData>(
       const expiredAppointments = await prisma.appointment.findMany({
         where: {
           status: AppointmentStatus.SCHEDULED,
-          payment: {
-            status: PaymentStatus.UNPAID,
-          },
+          paymentStatus: PaymentStatus.UNPAID,
           schedule: {
             startDateTime: {
               lt: new Date(),

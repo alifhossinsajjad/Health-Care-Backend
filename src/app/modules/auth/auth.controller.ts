@@ -182,13 +182,20 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
   try {
     const result = await AuthService.googleLoginSuccess(sessionToken);
 
-    // Set ONLY refreshToken in HTTP-only cookie for security (CSRF protection)
-    // The frontend will call /refresh-token to get the accessToken in memory!
+    // Set refreshToken in HTTP-only cookie
     res.cookie("refreshToken", result.refreshToken, {
       secure: envVars.NODE_ENV === "production",
       httpOnly: true,
       sameSite: envVars.NODE_ENV === "production" ? "none" : "lax", // Fix for localhost development
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (match your refresh token expiry)
+    });
+
+    // Also set accessToken in cookie so browser requests and Next.js middleware authenticate immediately
+    res.cookie("accessToken", result.accessToken, {
+      secure: envVars.NODE_ENV === "production",
+      httpOnly: false, // Allows frontend auth state reading if needed
+      sameSite: envVars.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
     // Validate redirect path to prevent open redirect vulnerabilities

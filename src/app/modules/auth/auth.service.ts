@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from "http-status";
-import { Role, UserStatus } from "../../../../generated/prisma/client";
+import { Role, UserStatus, NotificationType } from "../../../../generated/prisma/client";
 import { auth } from "../../lib/auth";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../errors/ApiError";
 import { getAccessToken, getRefreshToken } from "../../utils/token";
 import { verifyToken } from "../../utils/jwt";
 import { IRequestUser } from "../../interfaces/requestUser.interface";
+import { NotificationService } from "../notification/notification.service";
 import { Request } from "express";
 
 // In a real senior-level app, this interface might be inferred from the Zod Schema:
@@ -185,6 +186,29 @@ const loginUser = async (payload: ILoginPayload) => {
     id: user.id,
     role: user.role,
   });
+
+  // Broadcast security login alert to all Admins & Super Admins
+  if (user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN) {
+    const alertData = {
+      notificationType: NotificationType.ADMIN_LOGIN_ALERT,
+      title: "Security Alert: Admin Login",
+      message: `${user.name || user.email} (${user.role}) logged into the administration portal.`,
+      link: "/admin/dashboard",
+      metadata: {
+        adminId: user.id,
+        email: user.email,
+        role: user.role,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    NotificationService.broadcastToRole(Role.ADMIN, alertData).catch((err) =>
+      console.warn("⚠️ Failed to broadcast admin login alert to ADMIN:", err),
+    );
+    NotificationService.broadcastToRole(Role.SUPER_ADMIN, alertData).catch((err) =>
+      console.warn("⚠️ Failed to broadcast admin login alert to SUPER_ADMIN:", err),
+    );
+  }
 
   return {
     user: authData.user,
@@ -501,7 +525,7 @@ const googleLoginSuccess = async (sessionToken: string) => {
           userId: user.id,
           name: user.name,
           email: user.email,
-          contactNumber: "", // Provided by default since Google OAuth doesn't return phone numbers
+          contactNumber: `G-${user.id.slice(0, 12)}`, // Unique placeholder since Google OAuth doesn't return phone numbers
         },
       });
     }
@@ -516,6 +540,30 @@ const googleLoginSuccess = async (sessionToken: string) => {
     id: user.id,
     role: user.role as any,
   });
+
+  // Broadcast security login alert to all Admins & Super Admins
+  if (user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN) {
+    const alertData = {
+      notificationType: NotificationType.ADMIN_LOGIN_ALERT,
+      title: "Security Alert: Admin Login",
+      message: `${user.name || user.email} (${user.role}) logged into the administration portal via Google OAuth.`,
+      link: "/admin/dashboard",
+      metadata: {
+        adminId: user.id,
+        email: user.email,
+        role: user.role,
+        authProvider: "GOOGLE",
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    NotificationService.broadcastToRole(Role.ADMIN, alertData).catch((err) =>
+      console.warn("⚠️ Failed to broadcast admin login alert to ADMIN:", err),
+    );
+    NotificationService.broadcastToRole(Role.SUPER_ADMIN, alertData).catch((err) =>
+      console.warn("⚠️ Failed to broadcast admin login alert to SUPER_ADMIN:", err),
+    );
+  }
 
   return {
     accessToken,

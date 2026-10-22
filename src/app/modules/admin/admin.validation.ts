@@ -15,6 +15,7 @@ const changeUserStatus = z.object({
     userStatus: z.nativeEnum(UserStatus, {
       message: "Invalid or missing userStatus",
     }),
+    reason: z.string().optional(),
   }),
 });
 

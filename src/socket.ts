@@ -42,9 +42,14 @@ export const initSocketServer = (httpServer: HttpServer): Server => {
     });
 
     io.adapter(createAdapter(pubClient, subClient));
-    console.log("⚡ [Socket.io] Redis Pub/Sub Adapter initialized for horizontal scaling!");
+    console.log(
+      "⚡ [Socket.io] Redis Pub/Sub Adapter initialized for horizontal scaling!",
+    );
   } catch (adapterError) {
-    console.error("❌ [Socket.io] Failed to bind Redis Adapter. Falling back to in-memory:", adapterError);
+    console.error(
+      "❌ [Socket.io] Failed to bind Redis Adapter. Falling back to in-memory:",
+      adapterError,
+    );
   }
 
   // 2. JWT Handshake Authentication Middleware
@@ -59,9 +64,10 @@ export const initSocketServer = (httpServer: HttpServer): Server => {
         return next(new Error("Authentication error: Access token required"));
       }
 
-      const token = typeof rawToken === "string" && rawToken.startsWith("Bearer ")
-        ? rawToken.replace("Bearer ", "").trim()
-        : String(rawToken).trim();
+      const token =
+        typeof rawToken === "string" && rawToken.startsWith("Bearer ")
+          ? rawToken.replace("Bearer ", "").trim()
+          : String(rawToken).trim();
 
       const decoded = verifyToken<JwtPayload>(
         token,
@@ -81,7 +87,8 @@ export const initSocketServer = (httpServer: HttpServer): Server => {
 
       next();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Authentication failed";
+      const errorMessage =
+        err instanceof Error ? err.message : "Authentication failed";
       next(new Error(`Authentication error: ${errorMessage}`));
     }
   });
@@ -90,20 +97,29 @@ export const initSocketServer = (httpServer: HttpServer): Server => {
   io.on("connection", (socket) => {
     const user = socket.data.user;
     if (user) {
-      console.log(`🔌 [Socket.io Connected] User ID: ${user.id} (${user.role}) | Socket ID: ${socket.id}`);
+      console.log(
+        `🔌 [Socket.io Connected] User ID: ${user.id} (${user.role}) | Socket ID: ${socket.id}`,
+      );
+      // Auto-join personal user room and role-based broadcast room
+      socket.join(`user:${user.id}`);
+      socket.join(`role:${user.role}`);
     }
   });
 
   initChatSocket(io);
   initWebRtcSocket(io);
 
-  console.log("🔌 [Socket.io] Server ready and listening for real-time events!");
+  console.log(
+    "🔌 [Socket.io] Server ready and listening for real-time events!",
+  );
   return io;
 };
 
 export const getIO = (): Server => {
   if (!io) {
-    throw new Error("Socket.io is not initialized yet. Call initSocketServer first.");
+    throw new Error(
+      "Socket.io is not initialized yet. Call initSocketServer first.",
+    );
   }
   return io;
 };

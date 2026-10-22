@@ -100,6 +100,15 @@ export const initChatSocket = (io: Server) => {
             appointmentId: payload.appointmentId,
             message: savedMessage,
           });
+
+          // Ephemeral live notification (strictly online, no DB spam as per requirements)
+          io.to(`user:${savedMessage.receiverId}`).emit("notification:live", {
+            type: "NEW_MESSAGE",
+            title: `New message from ${user.name || user.email || "Consultation Participant"}`,
+            message: savedMessage.message,
+            link: `/consultation/${payload.appointmentId}`,
+            createdAt: new Date().toISOString(),
+          });
         }
 
         if (callback) callback({ success: true, data: savedMessage });

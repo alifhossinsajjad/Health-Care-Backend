@@ -6,7 +6,9 @@ import { addPaymentInvoiceJob } from "../../queues/payment.queue";
 import {
   PaymentStatus,
   AppointmentStatus,
+  NotificationType,
 } from "../../../../generated/prisma/enums";
+import { NotificationService } from "../notification/notification.service";
 
 const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
   const existingPayment = await prisma.payment.findFirst({
@@ -88,6 +90,40 @@ const handlerStripeWebhookEvent = async (event: Stripe.Event) => {
           paymentDate: new Date().toISOString(),
         });
         console.log(`🚀 [PaymentService] Dispatched invoice job for payment ${paymentId} to BullMQ`);
+
+        // Notify Doctor in real-time
+        NotificationService.createNotification({
+          userId: appointment.doctor.userId,
+          type: NotificationType.APPOINTMENT_BOOKED,
+          title: "Appointment Paid & Confirmed",
+          message: `Patient ${appointment.patient.name} has completed payment for the consultation on ${new Date(appointment.schedule.startDateTime).toLocaleString()}.`,
+          link: "/doctor/appointments",
+          metadata: {
+            appointmentId: appointment.id,
+            patientName: appointment.patient.name,
+            amount: appointment.payment?.amount,
+            startDateTime: appointment.schedule.startDateTime,
+          },
+        }).catch((err) =>
+          console.warn("⚠️ [PaymentService] Failed to notify doctor of payment:", err),
+        );
+
+        // Notify Patient in real-time
+        NotificationService.createNotification({
+          userId: appointment.patient.userId,
+          type: NotificationType.PAYMENT_CONFIRMED,
+          title: "Payment Confirmed",
+          message: `Your payment was successful and your appointment with Dr. ${appointment.doctor.name} is confirmed for ${new Date(appointment.schedule.startDateTime).toLocaleString()}.`,
+          link: "/dashboard/my-appointments",
+          metadata: {
+            appointmentId: appointment.id,
+            doctorName: appointment.doctor.name,
+            amount: appointment.payment?.amount,
+            startDateTime: appointment.schedule.startDateTime,
+          },
+        }).catch((err) =>
+          console.warn("⚠️ [PaymentService] Failed to notify patient of payment:", err),
+        );
       }
 
       console.log(

@@ -38,6 +38,11 @@ export interface ICallEndPayload {
   callId?: string;
 }
 
+export interface ICallCancelPayload {
+  appointmentId: string;
+  callId?: string;
+}
+
 export interface IIceServerConfig {
   urls: string | string[];
   username?: string;

@@ -1,6 +1,7 @@
 import { emailWorker } from "./email.worker";
 import { paymentWorker } from "./payment.worker";
 import { appointmentWorker } from "./appointment.worker";
+import { notificationWorker } from "./notification.worker";
 import { initRepeatableAppointmentJobs } from "../queues/appointment.queue";
 
 /**
@@ -16,7 +17,7 @@ export const initWorkers = async () => {
     console.warn("⚠️ [Workers] Could not register repeatable jobs:", (err as Error).message);
   }
 
-  console.log("👷 [Workers] EmailWorker, PaymentWorker, AppointmentWorker are active!");
+  console.log("👷 [Workers] EmailWorker, PaymentWorker, AppointmentWorker, NotificationWorker are active!");
 };
 
 /**
@@ -28,8 +29,9 @@ export const closeWorkers = async () => {
     emailWorker.close(),
     paymentWorker.close(),
     appointmentWorker.close(),
+    notificationWorker.close(),
   ]);
   console.log("✅ [Workers] All background workers shut down cleanly");
 };
 
-export { emailWorker, paymentWorker, appointmentWorker };
+export { emailWorker, paymentWorker, appointmentWorker, notificationWorker };
