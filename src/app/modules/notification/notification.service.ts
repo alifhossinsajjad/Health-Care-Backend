@@ -13,6 +13,7 @@ import { getIO } from "../../../socket";
 import { addNotificationJob } from "../../queues/notification.queue";
 import { NotificationType, Role } from "../../../../generated/prisma/enums";
 import { Prisma } from "../../../../generated/prisma/client";
+import { redisClient } from "../../../config/redis.config";
 
 /**
  * 1. Create a single direct notification, persist to DB, and deliver instantly via personal Socket room
@@ -314,6 +315,130 @@ const updateNotificationPreferences = async (
   });
 };
 
+/**
+ * 12. Notifies the other participant (Doctor or Patient) when one enters the consultation room
+ * Features Redis idempotency (10-minute cooldown per appointment/user) and presence check.
+ */
+const notifyPeerJoinedWaitingRoom = async (
+  joinedUserId: string,
+  appointmentId: string,
+) => {
+  try {
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        doctor: { select: { userId: true, name: true } },
+        patient: { select: { userId: true, name: true } },
+      },
+    });
+
+    if (!appointment) return null;
+
+    const isDoctor = appointment.doctor.userId === joinedUserId;
+    const isPatient = appointment.patient.userId === joinedUserId;
+
+    // Only doctor or patient triggers waiting room alerts (not admins/observers)
+    if (!isDoctor && !isPatient) return null;
+
+    const receiverUserId = isDoctor
+      ? appointment.patient.userId
+      : appointment.doctor.userId;
+
+    const joinerName = isDoctor
+      ? `Dr. ${appointment.doctor.name}`
+      : appointment.patient.name;
+
+    // 1. Check if receiver is ALREADY inside the consultation room right now
+    try {
+      const io = getIO();
+      const roomSockets = await io
+        .in(`appointment:${appointmentId}`)
+        .fetchSockets();
+      const isReceiverInRoom = roomSockets.some(
+        (s) => (s.data as any)?.user?.id === receiverUserId,
+      );
+
+      if (isReceiverInRoom) {
+        // Peer is already in the room with them; no need to trigger waiting push notifications
+        return null;
+      }
+    } catch {
+      // Continue if socket room inspection fails
+    }
+
+    // 2. Redis Anti-Spam / Idempotency Check (10-minute cooldown to prevent spam on reload)
+    const lockKey = `presence:notif:${appointmentId}:${joinedUserId}`;
+    try {
+      const alreadyNotified = await redisClient.get(lockKey);
+      if (alreadyNotified) {
+        return null;
+      }
+      await redisClient.set(lockKey, "sent", "EX", 600); // 10 minutes
+    } catch (redisErr) {
+      console.warn(
+        "⚠️ [NotificationService] Redis presence lock warning:",
+        (redisErr as Error).message,
+      );
+    }
+
+    const title = isDoctor
+      ? `🩺 ${joinerName} has entered the consultation room!`
+      : `👤 ${joinerName} is waiting in the consultation room!`;
+
+    const message = isDoctor
+      ? `${joinerName} is waiting for you in the consultation room. Please click to join now.`
+      : `${joinerName} has joined and is ready for the consultation.`;
+
+    const link = `/consultation/${appointmentId}`;
+
+    // 3. Persist notification in DB for receiver
+    const notification = await prisma.notification.create({
+      data: {
+        userId: receiverUserId,
+        type: NotificationType.APPOINTMENT_REMINDER,
+        title,
+        message,
+        link,
+        metadata: {
+          appointmentId,
+          joinedUserId,
+          role: isDoctor ? "DOCTOR" : "PATIENT",
+          event: "PEER_WAITING_IN_ROOM",
+        },
+      },
+    });
+
+    // 4. Deliver live socket alerts to receiver's personal room
+    try {
+      const io = getIO();
+      // Persistent in-app bell notification
+      io.to(`user:${receiverUserId}`).emit("notification:new", notification);
+
+      // Instant live toast / banner
+      io.to(`user:${receiverUserId}`).emit("notification:live", {
+        type: "PEER_WAITING_IN_ROOM",
+        title,
+        message,
+        link,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      console.warn(
+        "⚠️ [NotificationService] Could not deliver live waiting room socket notification:",
+        (socketErr as Error).message,
+      );
+    }
+
+    return notification;
+  } catch (error) {
+    console.warn(
+      "⚠️ [NotificationService] Failed in notifyPeerJoinedWaitingRoom:",
+      (error as Error).message,
+    );
+    return null;
+  }
+};
+
 export const NotificationService = {
   createNotification,
   broadcastToRole,
@@ -326,4 +451,5 @@ export const NotificationService = {
   clearAllNotifications,
   getMyNotificationPreferences,
   updateNotificationPreferences,
+  notifyPeerJoinedWaitingRoom,
 };

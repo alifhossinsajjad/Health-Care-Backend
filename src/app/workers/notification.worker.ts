@@ -11,6 +11,8 @@ import {
   NotificationType,
 } from "../../../generated/prisma/enums";
 import { getIO } from "../../socket";
+import { queueEmail } from "../utils/email";
+import { envVars } from "../../config/env";
 
 export const notificationWorker = new Worker<INotificationJobData>(
   NOTIFICATION_QUEUE_NAME,
@@ -114,7 +116,7 @@ export const notificationWorker = new Worker<INotificationJobData>(
       return { count: userIds.length };
     }
 
-    // 3. 15-Minute Countdown Appointment Reminder
+    // 3. Appointment Reminder (15-Minute Preparation or 5-Minute Final Call)
     if (type === "APPOINTMENT_REMINDER" && job.data.appointmentId) {
       const {
         appointmentId,
@@ -123,6 +125,7 @@ export const notificationWorker = new Worker<INotificationJobData>(
         doctorName,
         patientName,
         link: reminderLink,
+        reminderMinutes = 15,
       } = job.data;
 
       // Defensive check: Verify appointment is still active and SCHEDULED (not canceled)
@@ -138,6 +141,21 @@ export const notificationWorker = new Worker<INotificationJobData>(
         return { skipped: true };
       }
 
+      const isFiveMinute = reminderMinutes === 5;
+      const doctorTitle = isFiveMinute
+        ? "🚨 Consultation Starts in 5 Minutes!"
+        : "Consultation in 15 Minutes";
+      const doctorMsg = isFiveMinute
+        ? `Your video consultation with ${patientName || "Patient"} starts in 5 minutes! Please enter the consultation room now.`
+        : `Your video consultation with ${patientName || "Patient"} starts in 15 minutes.`;
+
+      const patientTitle = isFiveMinute
+        ? "🚨 Consultation Starts in 5 Minutes!"
+        : "Consultation in 15 Minutes";
+      const patientMsg = isFiveMinute
+        ? `Your video consultation with Dr. ${doctorName || "Doctor"} starts in 5 minutes! Please enter the consultation room now.`
+        : `Your video consultation with Dr. ${doctorName || "Doctor"} starts in 15 minutes. Please join the waiting room.`;
+
       const notifications = [];
 
       // Create notification for Doctor
@@ -145,10 +163,14 @@ export const notificationWorker = new Worker<INotificationJobData>(
         notifications.push({
           userId: doctorUserId,
           type: NotificationType.APPOINTMENT_REMINDER,
-          title: "Consultation in 15 Minutes",
-          message: `Your video consultation with ${patientName || "Patient"} starts in 15 minutes.`,
+          title: doctorTitle,
+          message: doctorMsg,
           link: reminderLink || `/consultation/${appointmentId}`,
-          metadata: { appointmentId, role: "DOCTOR" },
+          metadata: {
+            appointmentId,
+            role: "DOCTOR",
+            reminderMinutes,
+          },
         });
       }
 
@@ -157,10 +179,14 @@ export const notificationWorker = new Worker<INotificationJobData>(
         notifications.push({
           userId: patientUserId,
           type: NotificationType.APPOINTMENT_REMINDER,
-          title: "Consultation in 15 Minutes",
-          message: `Your video consultation with Dr. ${doctorName || "Doctor"} starts in 15 minutes. Please join the waiting room.`,
+          title: patientTitle,
+          message: patientMsg,
           link: reminderLink || `/consultation/${appointmentId}`,
-          metadata: { appointmentId, role: "PATIENT" },
+          metadata: {
+            appointmentId,
+            role: "PATIENT",
+            reminderMinutes,
+          },
         });
       }
 
@@ -174,20 +200,43 @@ export const notificationWorker = new Worker<INotificationJobData>(
           if (doctorUserId) {
             io.to(`user:${doctorUserId}`).emit("notification:new", {
               type: NotificationType.APPOINTMENT_REMINDER,
-              title: "Consultation in 15 Minutes",
-              message: `Your video consultation with ${patientName || "Patient"} starts in 15 minutes.`,
+              title: doctorTitle,
+              message: doctorMsg,
               link: reminderLink || `/consultation/${appointmentId}`,
+              metadata: { appointmentId, reminderMinutes },
               createdAt: new Date().toISOString(),
             });
+
+            if (isFiveMinute) {
+              io.to(`user:${doctorUserId}`).emit("notification:live", {
+                type: "APPOINTMENT_REMINDER",
+                title: doctorTitle,
+                message: doctorMsg,
+                link: reminderLink || `/consultation/${appointmentId}`,
+                createdAt: new Date().toISOString(),
+              });
+            }
           }
+
           if (patientUserId) {
             io.to(`user:${patientUserId}`).emit("notification:new", {
               type: NotificationType.APPOINTMENT_REMINDER,
-              title: "Consultation in 15 Minutes",
-              message: `Your video consultation with Dr. ${doctorName || "Doctor"} starts in 15 minutes. Please join the waiting room.`,
+              title: patientTitle,
+              message: patientMsg,
               link: reminderLink || `/consultation/${appointmentId}`,
+              metadata: { appointmentId, reminderMinutes },
               createdAt: new Date().toISOString(),
             });
+
+            if (isFiveMinute) {
+              io.to(`user:${patientUserId}`).emit("notification:live", {
+                type: "APPOINTMENT_REMINDER",
+                title: patientTitle,
+                message: patientMsg,
+                link: reminderLink || `/consultation/${appointmentId}`,
+                createdAt: new Date().toISOString(),
+              });
+            }
           }
         } catch (socketErr) {
           console.warn(
@@ -197,7 +246,78 @@ export const notificationWorker = new Worker<INotificationJobData>(
         }
       }
 
-      return { reminded: true, appointmentId };
+      // If this is the 5-minute countdown, dispatch email alerts for offline users as well
+      if (isFiveMinute) {
+        try {
+          const [doctorUser, patientUser] = await Promise.all([
+            doctorUserId
+              ? prisma.user.findUnique({
+                  where: { id: doctorUserId },
+                  select: { email: true, name: true },
+                })
+              : null,
+            patientUserId
+              ? prisma.user.findUnique({
+                  where: { id: patientUserId },
+                  select: { email: true, name: true },
+                })
+              : null,
+          ]);
+
+          const frontendBaseUrl =
+            envVars.FRONTEND_URL || "http://localhost:3000";
+          const fullConsultationUrl = `${frontendBaseUrl}${reminderLink || `/consultation/${appointmentId}`}`;
+
+          if (doctorUser?.email) {
+            queueEmail({
+              to: doctorUser.email,
+              subject: `🚨 Urgent: Consultation with ${patientName || "Patient"} starts in 5 minutes!`,
+              templateName: "consultation-reminder",
+              templateData: {
+                name: doctorName || doctorUser.name || "Doctor",
+                peerName: patientName || "Patient",
+                peerRole: "Patient",
+                minutesLeft: 5,
+                consultationUrl: fullConsultationUrl,
+                isDoctor: true,
+              },
+            }).catch((err) =>
+              console.warn(
+                "⚠️ [NotificationWorker] Failed to dispatch reminder email to doctor:",
+                (err as Error).message,
+              ),
+            );
+          }
+
+          if (patientUser?.email) {
+            queueEmail({
+              to: patientUser.email,
+              subject: `🚨 Urgent: Consultation with Dr. ${doctorName || "Doctor"} starts in 5 minutes!`,
+              templateName: "consultation-reminder",
+              templateData: {
+                name: patientName || patientUser.name || "Patient",
+                peerName: `Dr. ${doctorName || "Doctor"}`,
+                peerRole: "Doctor",
+                minutesLeft: 5,
+                consultationUrl: fullConsultationUrl,
+                isDoctor: false,
+              },
+            }).catch((err) =>
+              console.warn(
+                "⚠️ [NotificationWorker] Failed to dispatch reminder email to patient:",
+                (err as Error).message,
+              ),
+            );
+          }
+        } catch (emailErr) {
+          console.warn(
+            "⚠️ [NotificationWorker] Error preparing reminder emails:",
+            (emailErr as Error).message,
+          );
+        }
+      }
+
+      return { reminded: true, appointmentId, reminderMinutes };
     }
 
     return { processed: true };

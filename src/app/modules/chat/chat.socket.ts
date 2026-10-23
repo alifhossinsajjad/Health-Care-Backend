@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { ChatService } from "./chat.service";
+import { NotificationService } from "../notification/notification.service";
 import {
   ISendMessagePayload,
   ITypingPayload,
@@ -52,6 +53,17 @@ export const initChatSocket = (io: Server) => {
             role: user.role,
             appointmentId,
           });
+
+          // Trigger Waiting Room presence notification to peer (with Redis anti-spam cooldown)
+          NotificationService.notifyPeerJoinedWaitingRoom(
+            user.id,
+            appointmentId,
+          ).catch((notifErr) =>
+            console.warn(
+              "⚠️ [ChatSocket] Error in notifyPeerJoinedWaitingRoom:",
+              notifErr,
+            ),
+          );
 
           if (callback) {
             callback({

@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { WebRtcService } from "./webrtc.service";
+import { NotificationService } from "../notification/notification.service";
 import {
   ICallInitiatePayload,
   ICallAcceptPayload,
@@ -48,6 +49,17 @@ export const initWebRtcSocket = (io: Server) => {
             role: user.role,
             appointmentId: payload.appointmentId,
           });
+
+          // Trigger Waiting Room presence notification to peer (with Redis anti-spam cooldown)
+          NotificationService.notifyPeerJoinedWaitingRoom(
+            user.id,
+            payload.appointmentId,
+          ).catch((notifErr) =>
+            console.warn(
+              "⚠️ [WebRtcSocket] Error in notifyPeerJoinedWaitingRoom:",
+              notifErr,
+            ),
+          );
 
           if (callback) {
             callback({

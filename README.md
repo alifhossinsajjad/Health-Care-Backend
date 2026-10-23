@@ -448,17 +448,28 @@ flowchart TD
 - **The Issue:** Rapid repeated clicks by administrators on "Publish Schedules" could flood tens of thousands of doctors with redundant duplicate notifications.
 - **Our Solution:** Broadcast jobs accept deterministic `jobId` hashes (e.g., `notif-schedules-${startDate}-${endDate}-${startTime}-${endTime}`). BullMQ and Redis automatically drop duplicate jobs arriving within the throttle window without re-broadcasting.
 
-#### 4. Distributed 15-Minute Pre-Consultation Countdown Worker
-- **Clinical Impact:** Patient and doctor no-show rates drop by over 35% with timely reminders.
-- **Architecture:** When an appointment is booked or paid, we compute `delay = (startDateTime - 15m) - now`. If the consultation is in the future, a delayed BullMQ job is registered with `jobId: appointment-reminder-${appointment.id}`. If the appointment is canceled prior to consultation, `cancelAppointmentReminder()` removes the pending job from Redis immediately.
+#### 4. Two-Stage Pre-Consultation Countdown & Urgent Email Engine (T - 15m & T - 5m)
+- **Clinical Impact:** Patient and doctor no-show rates drop drastically with a coordinated two-stage reminder:
+  - **Stage 1 (T - 15 Minutes):** Preparation alert via in-app bell notification + Socket.io event reminding both Doctor and Patient to test audio, video, and medical history.
+  - **Stage 2 (T - 5 Minutes - The Final Call):** Urgent high-priority notification with sound chime (`🚨 Consultation Starts in 5 Minutes!`) dispatched across **both Online (Socket.io) and Offline (Transactional Email)** channels using `emailQueue` and `consultation-reminder.ejs`. Offline users receive an urgent email with a direct 1-click consultation room entry link.
+- **Resilience:** If an appointment is cancelled beforehand, `cancelAppointmentReminder()` cleans up all scheduled BullMQ reminder jobs (`15m` and `5m`) from Redis immediately.
 
-#### 5. Ephemeral Chat Messaging Alerts (Zero Database Pollution)
+#### 5. Consultation Waiting Room Presence Engine (Redis Anti-Spam & Socket Presence Check)
+- **Problem Solved:** When a doctor or patient enters the consultation room ahead of the other party, emitting only to the internal room socket fails if the other party is browsing elsewhere on the platform or offline.
+- **Enterprise Solution:** When a participant connects (`join:appointment` or `call:join`), the backend:
+  1. Inspects the consultation room sockets (`io.in('appointment:id').fetchSockets()`). If the peer is already in the room, no redundant push is triggered.
+  2. Applies a **10-minute Redis cooldown lock** (`presence:notif:${appointmentId}:${userId}`) to guarantee zero notification spam on page refreshes.
+  3. Dispatches a direct in-app notification and high-priority banner to the peer's personal channel (`user:${peerUserId}`):
+     - *Doctor joins first:* `"🩺 Dr. [Doctor Name] has entered the consultation room and is waiting for you! Click to join."`
+     - *Patient joins first:* `"👤 Patient [Patient Name] is in the waiting room and ready for consultation."`
+
+#### 6. Ephemeral Chat Messaging Alerts (Zero Database Pollution)
 - Chat pings between participants are emitted as ephemeral socket events (`notification:live`). This provides instantaneous audio chimes and active toast alerts to online participants without filling the PostgreSQL `notifications` table with millions of transient chat records.
 
-#### 6. Nightly 90-Day Retention Auto-Purge Worker
+#### 7. Nightly 90-Day Retention Auto-Purge Worker
 - To prevent database bloat and disk exhaustion in high-volume hospitals, a scheduled cron (`0 3 * * *`) automatically purges read notifications older than 90 days (`isRead: true, createdAt < 90_days_ago`).
 
-#### 7. User Notification Preferences (Opt-In / Settings Matrix)
+#### 8. User Notification Preferences (Opt-In / Settings Matrix)
 - Full HIPAA/GDPR-compliant granular notification preferences via `NotificationPreference` model (`emailAlerts`, `inAppAlerts`, `appointmentReminders`, `marketingAlerts`, `soundEnabled`).
 
 ---
