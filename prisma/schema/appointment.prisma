@@ -22,6 +22,7 @@ model Appointment {
     payment      Payment?
     chatMessages ChatMessage[]
     consultationLogs VideoConsultationLog[]
+    labReports   LabReport[]
 
     @@unique([doctorId, scheduleId])
     @@index([patientId])

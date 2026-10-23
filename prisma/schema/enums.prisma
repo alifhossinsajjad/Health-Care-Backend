@@ -69,4 +69,29 @@ enum NotificationType {
   NEW_REVIEW
   NEW_MESSAGE
   SYSTEM
+}
+
+enum LabReportType {
+  CBC
+  LIPID_PROFILE
+  LIVER_FUNCTION
+  KIDNEY_FUNCTION
+  THYROID_PROFILE
+  BLOOD_SUGAR
+  URINE_ANALYSIS
+  ELECTROLYTES
+  XRAY_IMAGING
+  OTHER
+}
+
+enum LabReportUrgency {
+  ROUTINE
+  ATTENTION
+  CRITICAL
+}
+
+enum LabReportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
 }

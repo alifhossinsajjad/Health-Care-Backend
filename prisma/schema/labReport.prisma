@@ -1,0 +1,62 @@
+model LabReport {
+  id              String           @id @default(uuid(7))
+  reportName      String           // Original or user-assigned name e.g. "CBC Report - Popular Diagnostic"
+  reportUrl       String           // Cloudinary URL of PDF or Image
+  publicId        String?          // Cloudinary publicId for deletion
+  fileType        String           // "application/pdf", "image/jpeg", "image/png", etc.
+  fileSize        Int?             // File size in bytes
+  
+  status          LabReportStatus  @default(PROCESSING)
+  reportType      LabReportType    @default(OTHER)
+  urgency         LabReportUrgency @default(ROUTINE)
+
+  // Clinical Metadata Extracted by AI
+  patientName     String?          // Name printed on the lab report
+  patientAge      String?          // Age printed on the report
+  patientGender   String?          // Gender printed on the report
+  testDate        DateTime?        // Date test was conducted
+  labName         String?          // Diagnostic Center name (e.g., Labaid, Square)
+  referringDoctor String?          // Doctor who ordered the test
+
+  // Detailed Structured Clinical Parameters
+  // Array of { name, value, unit, referenceRange, status: "NORMAL"|"HIGH"|"LOW"|"CRITICAL", clinicalNote }
+  parameters      Json             @default("[]")
+  
+  // Abnormal / Critical Findings Flagged List
+  // Array of { parameter, value, referenceRange, severity, clinicalNote }
+  abnormalFindings Json            @default("[]")
+
+  // Patient-Friendly Summaries
+  summaryEn       String?          @db.Text
+  summaryBn       String?          @db.Text
+
+  // Intelligent Consultation Prep
+  doctorQuestions Json             @default("[]") // 3-5 questions to ask doctor
+  recommendedSpecialties String[]  @default([])   // e.g. ["Cardiology", "Internal Medicine"]
+
+  // Clinical AI Disclaimer
+  disclaimer      String?          @db.Text
+
+  // Raw AI Extracted Response (for auditing and model upgrades)
+  rawAnalysis     Json?
+
+  errorMessage    String?          @db.Text
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  patientId       String
+  patient         Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Optional: Linked directly to a telemedicine appointment consultation
+  appointmentId   String?
+  appointment     Appointment?     @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, createdAt])
+  @@index([appointmentId])
+  @@index([reportType])
+  @@index([urgency])
+  @@index([status])
+  @@map("lab_reports")
+}
