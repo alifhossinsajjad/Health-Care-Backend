@@ -197,18 +197,18 @@ const givePrescription = async (
     console.warn("⚠️ [PrescriptionService] Failed to notify patient:", err),
   );
 
-  // Step 7: Broadcast consultation completion to the live video call room
+  // Step 7: Broadcast prescription issuance to the live video call room (Informational toast)
   try {
     const io = getIO();
-    io.to(`call:${appointmentData.id}`).emit("consultation:completed", {
+    io.to(`call:${appointmentData.id}`).emit("prescription:issued", {
       appointmentId: appointmentData.id,
       prescriptionId: prescription.id,
       doctorName: doctorData.name,
       pdfUrl: pdfUrl || null,
-      message: "Consultation completed. Prescription has been issued.",
+      message: `Dr. ${doctorData.name} has issued a prescription.`,
     });
   } catch (socketErr) {
-    console.warn("⚠️ [PrescriptionService] Failed to emit consultation:completed:", socketErr);
+    console.warn("⚠️ [PrescriptionService] Failed to emit prescription:issued:", socketErr);
   }
 
   return updatedPrescription;
