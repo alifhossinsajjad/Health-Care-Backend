@@ -16,6 +16,7 @@ import {
 } from "../../../config/cloudinary.config";
 import { Prisma } from "../../../../generated/prisma/client";
 import { NotificationService } from "../notification/notification.service";
+import { getIO } from "../../../socket";
 
 const givePrescription = async (
   user: IRequestUser,
@@ -195,6 +196,20 @@ const givePrescription = async (
   }).catch((err) =>
     console.warn("⚠️ [PrescriptionService] Failed to notify patient:", err),
   );
+
+  // Step 7: Broadcast consultation completion to the live video call room
+  try {
+    const io = getIO();
+    io.to(`call:${appointmentData.id}`).emit("consultation:completed", {
+      appointmentId: appointmentData.id,
+      prescriptionId: prescription.id,
+      doctorName: doctorData.name,
+      pdfUrl: pdfUrl || null,
+      message: "Consultation completed. Prescription has been issued.",
+    });
+  } catch (socketErr) {
+    console.warn("⚠️ [PrescriptionService] Failed to emit consultation:completed:", socketErr);
+  }
 
   return updatedPrescription;
 };

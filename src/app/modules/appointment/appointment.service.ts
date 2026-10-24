@@ -22,6 +22,7 @@ import {
   scheduleAppointmentReminder,
   cancelAppointmentReminder,
 } from "../../queues/notification.queue";
+import { getIO } from "../../../socket";
 
 
 // 1. Book Appointment (Pay Now)
@@ -570,6 +571,38 @@ const changeAppointmentStatus = async (
           err,
         ),
       );
+    }
+  }
+
+  // Handle Completion
+  if (payload.status === AppointmentStatus.COMPLETED) {
+    // Notify Patient
+    NotificationService.createNotification({
+      userId: appointment.patient.userId,
+      type: NotificationType.SYSTEM,
+      title: "Consultation Completed",
+      message: `Your consultation with Dr. ${appointment.doctor.name} has been marked as completed.`,
+      link: "/dashboard/my-appointments",
+      metadata: {
+        appointmentId: appointment.id,
+        doctorId: appointment.doctor.id,
+        doctorName: appointment.doctor.name,
+      },
+    }).catch((err) =>
+      console.warn("⚠️ [AppointmentService] Failed to notify patient of completion:", err),
+    );
+
+    // Broadcast live socket event to consultation room
+    try {
+      const io = getIO();
+      io.to(`call:${appointmentId}`).emit("consultation:completed", {
+        appointmentId,
+        doctorName: appointment.doctor.name,
+        completedAt: new Date().toISOString(),
+        message: "Consultation marked as completed by doctor.",
+      });
+    } catch (socketErr) {
+      console.warn("⚠️ [AppointmentService] Failed to emit consultation:completed:", socketErr);
     }
   }
 

@@ -1,0 +1,22 @@
+services:
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: enterprise_jenkins
+    restart: unless-stopped
+    privileged: true
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=Asia/Dhaka
+      - JENKINS_OPTS=--httpPort=8080
+
+volumes:
+  jenkins_home:
+    name: enterprise_jenkins_home
