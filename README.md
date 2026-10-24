@@ -135,7 +135,7 @@ curl -s http://localhost/health
 # Start Jenkins Controller on port 8080
 docker compose -f docker-compose.jenkins.yml up -d --build
 ```
-Access Jenkins at `http://localhost:8080` to view live Stage Views, test logs, and build history.
+Access Jenkins at `your service port` to view live Stage Views, test logs, and build history.
 
 ---
 
