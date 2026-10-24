@@ -69,7 +69,7 @@ pipeline {
                         fi
                     fi
                     docker compose -p healthcare-backend down --remove-orphans || true
-                    docker compose -p healthcare-backend up -d --build
+                    docker compose -p healthcare-backend up -d --build --scale api=3
                     echo "⏳ Waiting 15 seconds for container initialization..."
                     sleep 15
                     docker compose -p healthcare-backend ps
