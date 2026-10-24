@@ -61,6 +61,13 @@ pipeline {
             steps {
                 echo '🚀 [Deploy] Rolling update containers via Docker Compose...'
                 sh '''
+                    if [ ! -f .env ]; then
+                        if [ -f /var/jenkins_home/.env ]; then
+                            cp /var/jenkins_home/.env .env
+                        else
+                            cp .env.example .env
+                        fi
+                    fi
                     docker compose down --remove-orphans || true
                     docker compose up -d --build
                     echo "⏳ Waiting 15 seconds for container initialization..."
