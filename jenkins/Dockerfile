@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     lsb-release \
     docker.io \
+    docker-cli \
     docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
