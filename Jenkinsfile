@@ -22,9 +22,19 @@ pipeline {
                 echo '📥 [SCM] Checking out repository branch...'
                 checkout scm
                 script {
-                    def currentBranch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'unknown'
-                    echo "🌿 Detected Branch: ${currentBranch}"
+                    def rawBranch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'unknown'
+                    echo "🌿 Detected Branch from SCM: ${rawBranch}"
                     echo "🔖 Git Commit SHA: ${env.GIT_COMMIT ?: 'local'}"
+
+                    // Intelligent check: Does the checked-out commit exist on origin/main?
+                    def isMainCommit = (sh(script: "git branch -r --contains HEAD | grep -E 'origin/main|origin/master'", returnStatus: true) == 0)
+                    if (isMainCommit) {
+                        echo "🎯 Target Commit is verified on origin/main. Activating Production Deployment (CD)!"
+                        env.IS_PRODUCTION = 'true'
+                    } else {
+                        echo "🛡️ Target Commit is restricted to dev branch. Activating CI Testing Gate."
+                        env.IS_PRODUCTION = 'false'
+                    }
                 }
             }
         }
@@ -58,8 +68,7 @@ pipeline {
         stage('5. Dev Branch Gate (CI Only)') {
             when {
                 expression {
-                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
-                    return !(branch.endsWith('/main') || branch == 'main' || branch.endsWith('/master') || branch == 'master')
+                    return env.IS_PRODUCTION != 'true'
                 }
             }
             steps {
@@ -75,8 +84,7 @@ pipeline {
         stage('6. Production Docker Image Build') {
             when {
                 expression {
-                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
-                    return (branch.endsWith('/main') || branch == 'main' || branch.endsWith('/master') || branch == 'master')
+                    return env.IS_PRODUCTION == 'true'
                 }
             }
             steps {
@@ -93,8 +101,7 @@ pipeline {
         stage('7. Production Deploy & Health Probe') {
             when {
                 expression {
-                    def branch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
-                    return (branch.endsWith('/main') || branch == 'main' || branch.endsWith('/master') || branch == 'master')
+                    return env.IS_PRODUCTION == 'true'
                 }
             }
             steps {
@@ -119,8 +126,7 @@ pipeline {
     post {
         success {
             script {
-                def branch = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
-                if (branch.endsWith('/main') || branch == 'main' || branch.endsWith('/master') || branch == 'master') {
+                if (env.IS_PRODUCTION == 'true') {
                     echo '========================================================================'
                     echo '✅ [PRODUCTION CD SUCCESS] Enterprise Telemedicine API scaled & live!'
                     echo "🏷️ Image Tag: ${IMAGE_NAME}:${BUILD_NUMBER} & ${IMAGE_TAG}"
