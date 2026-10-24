@@ -2,6 +2,7 @@
 
 [![Healthcare Backend CI](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/ci.yml/badge.svg)](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/ci.yml)
 [![Healthcare Backend CD](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/deploy.yml/badge.svg)](https://github.com/alifhossinsajjad/Health-Care-Backend/actions/workflows/deploy.yml)
+![Jenkins](https://img.shields.io/badge/Jenkins-Enterprise%20CI%2FCD-D33833?style=flat&logo=jenkins&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
 ![Nginx](https://img.shields.io/badge/Nginx-009639?style=flat&logo=nginx&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
@@ -12,7 +13,7 @@
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Generative%20AI%20SDK-8E75B2?style=flat&logo=googlegemini&logoColor=white)
 ![Applied AI](https://img.shields.io/badge/Applied%20AI-Enterprise%20RAG-FF6F00?style=flat)
 
-Welcome to the **Healthcare Application Backend**! A high-performance, enterprise-grade, horizontally scalable telemedicine backend engineered with **Node.js, Express, TypeScript, Prisma ORM, Redis, BullMQ, Docker Compose, and Nginx**.
+Welcome to the **Healthcare Application Backend**! A high-performance, enterprise-grade, horizontally scalable telemedicine backend engineered with **Node.js, Express, TypeScript, Prisma ORM, Redis, BullMQ, Docker Compose, Nginx, and Jenkins CI/CD**.
 
 ---
 
@@ -28,6 +29,113 @@ Our platform is engineered as a **Stateless, Scalable, and Resilient Micro-monol
 - **Graceful Shutdown Mechanism:** Implemented production-grade Process Signal Handlers (`SIGTERM`, `SIGINT`, `uncaughtException`, `unhandledRejection`) to prevent abrupt server crashes and data corruption.
 - **Data Integrity & Transactions:** Wrapped complex multi-model database operations within `prisma.$transaction` to guarantee database consistency.
 - **Performance Optimization:** Parallelized heavy dashboard statistics queries using `Promise.all`, bringing processing time down to milliseconds.
+
+---
+
+## 🚀 Enterprise CI/CD Pipeline & High-Availability Docker Infrastructure
+
+Our backend employs a fully automated, enterprise Continuous Integration & Continuous Deployment (CI/CD) engine orchestrated by a self-hosted **Jenkins LTS Controller** and a high-availability **Docker Compose** container cluster with **Nginx Reverse Proxy / Load Balancer**.
+
+```mermaid
+flowchart TD
+    subgraph GitBranching["1. Enterprise Branching Strategy (GitHub Flow)"]
+        DevBranch["🌿 dev Branch<br/>(Active Development / Feature PRs)"]
+        MainBranch["🛡️ main Branch<br/>(Production Release)"]
+    end
+
+    subgraph JenkinsPipeline["2. Automated Jenkins CI/CD Orchestrator (:8080)"]
+        Checkout["1. Checkout SCM<br/>(Git Hook / Polling)"]
+        Deps["2. Prisma & Dependencies<br/>(npm install & prisma generate)"]
+        Lint["3. ESLint Code Audit<br/>(Static Code Quality)"]
+        TSBuild["4. TypeScript Strict Compilation<br/>(Strict Type Checking)"]
+        
+        DevGate{"Branch == dev?"}
+        
+        DevCI["5. Dev CI Gate<br/>✅ Verified Safe for PR<br/>(Docker & Deploy Bypassed)"]
+        
+        ProdBuild["6. Enterprise Docker Build<br/>🏷️ Tagged: :${BUILD_NUMBER} & :latest"]
+        ProdDeploy["7. Production Zero-Downtime Deploy<br/>Scale: 3 API Replicas behind Nginx"]
+        HealthProbe["8. Health Probe Verification<br/>(GET /health == HTTP 200)"]
+    end
+
+    subgraph DockerCluster["3. High-Availability Production Cluster"]
+        Nginx["🌐 Nginx Load Balancer (:80)<br/>• least_conn load balancing<br/>• Rate Limiting (30r/s)<br/>• WebSocket Connection Upgrades"]
+        
+        API1["📦 api-1 (:5000)"]
+        API2["📦 api-2 (:5000)"]
+        API3["📦 api-3 (:5000)"]
+        
+        Redis[("⚡ Redis 7 Alpine (:6379)<br/>• BullMQ Queues<br/>• Socket.io Pub/Sub Adapter")]
+        Postgres[("🛢️ PostgreSQL + pgvector")]
+    end
+
+    DevBranch --> Checkout
+    MainBranch --> Checkout
+    Checkout --> Deps --> Lint --> TSBuild --> DevGate
+    
+    DevGate -- "Yes (dev)" --> DevCI
+    DevGate -- "No (main)" --> ProdBuild --> ProdDeploy --> HealthProbe
+    
+    ProdDeploy --> Nginx
+    Nginx --> API1 & API2 & API3
+    API1 & API2 & API3 --> Redis
+    API1 & API2 & API3 --> Postgres
+```
+
+### 🔑 Key CI/CD & DevOps Architectural Highlights
+
+1. **Branch-Aware Dual Execution (CI vs CD):**
+   - **`dev` Branch (CI Only):** Automatically validates dependencies, Prisma generation, ESLint rules, and TypeScript compilation. Docker image builds and live server deployments are bypassed to keep production 100% insulated from experimental changes.
+   - **`main` Branch (CI + CD):** Runs the full validation suite, builds an optimized multi-stage Docker image, tags it with an immutable build number (`healthcare-backend-api:${BUILD_NUMBER}`) and `:latest`, then triggers a zero-downtime rolling update across all 3 API replicas.
+2. **Nginx Reverse Proxy & Load Balancing:**
+   - Implements `least_conn` algorithm to route requests dynamically to the replica with the lowest active load.
+   - Handles WebSocket connection upgrades seamlessly for real-time WebRTC signaling and Socket.io chat.
+   - Protects the API layer with client-level rate limiting (`30r/s` with burst capacity).
+3. **Containerized Jenkins Controller (`docker-compose.jenkins.yml`):**
+   - Runs independently with Node.js 22 LTS, `docker-cli`, and `docker-compose`.
+   - Mounts the host Docker daemon socket (`/var/run/docker.sock`) to orchestrate container lifecycle operations directly on the host.
+   - Persistent volume (`enterprise_jenkins_home`) guarantees that pipeline history, build logs, and credentials survive container restarts.
+
+---
+
+### 💻 Development & Deployment Workflows
+
+#### A. Local Development Workflow (Instant HMR, Minimal Resource Usage)
+For everyday rapid feature development, run only the Redis container while running Express locally:
+```bash
+# 1. Start Redis for BullMQ & Socket.io
+docker start healthcare_redis   # or docker compose up -d redis
+
+# 2. Run backend locally in terminal
+npm run dev
+
+# 3. Frontend .env config:
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+```
+
+#### B. Full Production Cluster Run (Docker Compose with 3 API Replicas)
+To spin up or test the complete distributed production stack locally:
+```bash
+# 1. Build and launch 3 API replicas behind Nginx
+docker compose -p healthcare-backend up -d --build --scale api=3
+
+# 2. Frontend .env config (routes traffic through Nginx Load Balancer on port 80):
+NEXT_PUBLIC_API_BASE_URL=http://localhost/api/v1
+NEXT_PUBLIC_API_URL=http://localhost
+NEXT_PUBLIC_SOCKET_URL=http://localhost
+
+# 3. Check cluster health
+curl -s http://localhost/health
+```
+
+#### C. Running the Jenkins CI/CD Controller
+```bash
+# Start Jenkins Controller on port 8080
+docker compose -f docker-compose.jenkins.yml up -d --build
+```
+Access Jenkins at `http://localhost:8080` to view live Stage Views, test logs, and build history.
 
 ---
 
@@ -565,6 +673,8 @@ flowchart TD
 
 ## 🌟 Upcoming Roadmap
 - [x] **Automated GitHub Actions CI/CD:** Auto-testing & deployment pipeline.
+- [x] **Enterprise Jenkins CI/CD Controller & Docker Pipeline:** Branch-aware automated testing, Prisma client generation, ESLint audit, strict TypeScript compilation, immutable artifact tagging (`:${BUILD_NUMBER}`), and automated zero-downtime rolling deployment.
+- [x] **Nginx High-Availability Load Balancing:** 3 API service replicas with `least_conn` proxying and WebSocket connection upgrades.
 - [x] **Enterprise Applied AI & Clinical RAG Architecture:** Production pgvector HNSW search, deterministic Rule-0 triage, multi-model failover, and SSE streaming assistant.
 - [x] **Distributed Real-Time Chat Engine (Socket.io + Redis Adapter):** Cross-replica event broadcasting across cluster, appointment-scoped JWT authorization, PostgreSQL message persistence, typing indicators, and read receipts.
 - [x] **WebRTC Video Consultations:** Peer-to-peer live telemedicine video calling with session duration tracking and distributed signaling.
