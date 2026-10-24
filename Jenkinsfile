@@ -26,13 +26,12 @@ pipeline {
 
         stage('2. Prisma & Dependencies') {
             steps {
-                echo '📦 [Prisma] Installing dependencies & generating database client...'
+                echo '📦 [Prisma] Installing all dependencies & generating database client...'
                 sh '''
                     echo "Node version: $(node -v)"
                     echo "NPM version: $(npm -v)"
-                    npm install --legacy-peer-deps
-                    npx prisma validate
-                    npx prisma generate
+                    npm install --include=dev --legacy-peer-deps
+                    npm run generate
                 '''
             }
         }
