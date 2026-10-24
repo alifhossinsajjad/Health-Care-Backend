@@ -9,7 +9,11 @@ import { ICreatePrescriptionPayload } from "./prescription.interface";
 import { generatePrescriptionPDF } from "./prescription.utils";
 import { IPaginationOptions } from "../../interfaces/pagination";
 import { paginationHelper } from "../../../shared/paginationHelper";
-import { AppointmentStatus, Role, NotificationType } from "../../../../generated/prisma/enums";
+import {
+  AppointmentStatus,
+  Role,
+  NotificationType,
+} from "../../../../generated/prisma/enums";
 import {
   deleteFileFromCloudinary,
   uploadFileToCloudinary,
@@ -208,7 +212,10 @@ const givePrescription = async (
       message: `Dr. ${doctorData.name} has issued a prescription.`,
     });
   } catch (socketErr) {
-    console.warn("⚠️ [PrescriptionService] Failed to emit prescription:issued:", socketErr);
+    console.warn(
+      "⚠️ [PrescriptionService] Failed to emit prescription:issued:",
+      socketErr,
+    );
   }
 
   return updatedPrescription;
