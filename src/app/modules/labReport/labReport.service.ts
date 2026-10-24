@@ -150,9 +150,17 @@ const analyzeAndSaveReport = async (
   }
 
   if (!aiResponse) {
+    let cleanMessage = lastError?.message || "Unknown error";
+    try {
+      if (typeof cleanMessage === "string" && cleanMessage.includes("error")) {
+        const parsed = JSON.parse(cleanMessage);
+        if (parsed?.error?.message) cleanMessage = parsed.error.message;
+      }
+    } catch {}
+
     throw new ApiError(
       httpStatus.SERVICE_UNAVAILABLE,
-      `AI Vision Extraction unavailable across all model endpoints: ${lastError?.message || "Unknown error"}`,
+      `AI Vision Extraction temporarily unavailable: ${cleanMessage}. Please retry in a moment.`,
     );
   }
 

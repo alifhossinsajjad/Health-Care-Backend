@@ -25,10 +25,10 @@ export const SUPPORTED_LAB_REPORT_MIME_TYPES = [
 ];
 
 export const LAB_REPORT_VISION_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-1.5-flash",
-  "gemini-2.0-flash",
   "gemini-3.5-flash",
+  "gemini-flash-latest",
+  "gemini-3.5-flash-lite",
+  "gemini-flash-lite-latest",
 ];
 
 export const MAX_LAB_REPORT_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
