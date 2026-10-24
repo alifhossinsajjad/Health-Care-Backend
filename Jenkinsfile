@@ -68,11 +68,11 @@ pipeline {
                             cp .env.example .env
                         fi
                     fi
-                    docker compose down --remove-orphans || true
-                    docker compose up -d --build
+                    docker compose -p healthcare-backend down --remove-orphans || true
+                    docker compose -p healthcare-backend up -d --build
                     echo "⏳ Waiting 15 seconds for container initialization..."
                     sleep 15
-                    docker compose ps
+                    docker compose -p healthcare-backend ps
                 '''
             }
         }

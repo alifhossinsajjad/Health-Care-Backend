@@ -1,3 +1,5 @@
+name: healthcare-backend
+
 services:
   # ==============================================================================
   # 1. Main Healthcare Backend API Service

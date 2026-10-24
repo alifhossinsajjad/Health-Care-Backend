@@ -1,3 +1,5 @@
+name: enterprise-jenkins-controller
+
 services:
   jenkins:
     build:
