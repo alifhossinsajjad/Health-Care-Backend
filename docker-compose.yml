@@ -48,13 +48,13 @@ services:
   # 3. Nginx Reverse Proxy & Load Balancer (Public Gateway on Port 80)
   # ==============================================================================
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: healthcare_nginx
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - healthcare_network
     depends_on:
