@@ -156,7 +156,9 @@ const analyzeAndSaveReport = async (
         const parsed = JSON.parse(cleanMessage);
         if (parsed?.error?.message) cleanMessage = parsed.error.message;
       }
-    } catch {}
+    } catch {
+      cleanMessage = lastError?.message || "Unknown error";
+    }
 
     throw new ApiError(
       httpStatus.SERVICE_UNAVAILABLE,

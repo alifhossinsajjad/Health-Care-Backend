@@ -10,6 +10,7 @@ import {
   AppointmentStatus,
   NotificationType,
 } from "../../../generated/prisma/enums";
+import { Prisma } from "../../../generated/prisma/client";
 import { getIO } from "../../socket";
 import { queueEmail } from "../utils/email";
 import { envVars } from "../../config/env";
@@ -50,7 +51,7 @@ export const notificationWorker = new Worker<INotificationJobData>(
           title,
           message,
           link: link || null,
-          metadata: metadata ? (metadata as any) : undefined,
+          metadata: metadata ? (metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
         }));
 
         await prisma.notification.createMany({
@@ -87,7 +88,7 @@ export const notificationWorker = new Worker<INotificationJobData>(
         title,
         message,
         link: link || null,
-        metadata: metadata ? (metadata as any) : undefined,
+        metadata: metadata ? (metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
       }));
 
       await prisma.notification.createMany({

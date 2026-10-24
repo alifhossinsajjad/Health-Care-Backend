@@ -227,7 +227,7 @@ const createAdmin = async (payload: ICreateAdmin) => {
     }).catch(err => console.error("Failed to send admin credentials email:", err));
 
     return result;
-  } catch (error) {
+  } catch {
     // Cleanup: Delete user if admin creation fails
     // Using better-auth delete if available, else prisma
     await prisma.user.delete({
@@ -325,7 +325,7 @@ const createSuperAdmin = async (payload: ICreateSuperAdmin) => {
     }).catch(err => console.error("Failed to send super admin credentials email:", err));
 
     return result;
-  } catch (error) {
+  } catch {
     // Cleanup: Delete user if super admin creation fails
     await prisma.user.delete({
       where: { id: userId },

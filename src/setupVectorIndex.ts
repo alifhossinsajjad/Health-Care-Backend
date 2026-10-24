@@ -14,8 +14,8 @@ async function setupVectorIndex() {
     `);
     
     console.log("✅ HNSW Cosine Vector Index verified successfully!");
-  } catch (error: any) {
-    console.error("❌ Failed to setup HNSW vector index:", error.message);
+  } catch (error) {
+    console.error("❌ Failed to setup HNSW vector index:", (error as Error).message);
   } finally {
     await prisma.$disconnect();
   }

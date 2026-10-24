@@ -201,7 +201,8 @@ const getPieChartData = async () => {
 const getBarChartData = async () => {
     // Convert BigInt to Number directly in the mapping to avoid JSON serialization errors
     // The query returns counts grouped by month
-    const appointmentCountByMonth: any[] = await prisma.$queryRaw`
+    const appointmentCountByMonth: Array<{ month: Date; count: number | bigint }> =
+      await prisma.$queryRaw`
         SELECT DATE_TRUNC('month', "createdAt") AS month,
         CAST(COUNT(*) AS INTEGER) AS count
         FROM "appointments"

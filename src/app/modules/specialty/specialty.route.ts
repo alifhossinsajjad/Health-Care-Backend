@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router } from "express";
 import { SpecialtyController } from "./specialty.controller";
 import validateRequest from "../../middlewares/validateRequest";
 import { SpecialtyValidation } from "./specialty.validation";
