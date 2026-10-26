@@ -124,7 +124,8 @@ pipeline {
                 sh '''
                     ssh -o StrictHostKeyChecking=no -i /var/jenkins_home/.ssh/healthcare-server_key.pem azureuser@104.214.178.218 "
                         cd /home/azureuser/Health-Care-Backend &&
-                        git pull origin main &&
+                        git fetch origin main &&
+                        git reset --hard origin/main &&
                         docker compose -p healthcare-backend up -d --build --scale api=1 --remove-orphans &&
                         echo '✅ Azure Cloud VPS Backend Updated Successfully!'
                     "
