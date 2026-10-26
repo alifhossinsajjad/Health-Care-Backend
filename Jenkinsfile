@@ -122,7 +122,7 @@ pipeline {
 
                 echo '☁️  [Deploy - 2/2] Deploying rolling update to Azure Cloud VPS via SSH...'
                 sh '''
-                    ssh -o StrictHostKeyChecking=no -i /var/jenkins_home/.ssh/healthcare-server_key.pem azureuser@104.214.178.218 "
+                    ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=60 -i /var/jenkins_home/.ssh/healthcare-server_key.pem azureuser@104.214.178.218 "
                         cd /home/azureuser/Health-Care-Backend &&
                         git fetch origin main &&
                         git reset --hard origin/main &&
