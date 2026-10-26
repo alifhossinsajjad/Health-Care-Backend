@@ -36,3 +36,8 @@ coverage/
 docker-compose.override.yml
 .docker/
 
+# Private Credentials & Local Deployment Notes
+*.private.md
+*.local.md
+
+

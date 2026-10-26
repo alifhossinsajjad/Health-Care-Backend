@@ -105,7 +105,7 @@ pipeline {
                 }
             }
             steps {
-                echo '🚀 [Deploy] Rolling update containers via Docker Compose (Scale api=3)...'
+                echo '🚀 [Deploy - 1/2] Deploying containers locally via Docker Compose (Scale api=3)...'
                 sh '''
                     if [ ! -f .env ]; then
                         if [ -f /var/jenkins_home/.env ]; then
@@ -115,9 +115,19 @@ pipeline {
                         fi
                     fi
                     docker compose -p healthcare-backend up -d --build --scale api=3 --remove-orphans
-                    echo "⏳ Waiting 15 seconds for replica stabilization..."
-                    sleep 15
+                    echo "⏳ Waiting 10 seconds for local replica stabilization..."
+                    sleep 10
                     docker compose -p healthcare-backend ps
+                '''
+
+                echo '☁️  [Deploy - 2/2] Deploying rolling update to Azure Cloud VPS via SSH...'
+                sh '''
+                    ssh -o StrictHostKeyChecking=no -i /var/jenkins_home/.ssh/healthcare-server_key.pem azureuser@104.214.178.218 "
+                        cd /home/azureuser/Health-Care-Backend &&
+                        git pull origin main &&
+                        docker compose -p healthcare-backend up -d --build --scale api=1 --remove-orphans &&
+                        echo '✅ Azure Cloud VPS Backend Updated Successfully!'
+                    "
                 '''
             }
         }
