@@ -1,9 +1,7 @@
 node_modules
 !.env.example
-.env
-.env*
 dist
-
+.env
 # Prisma
 /generated/prisma
 
@@ -35,6 +33,10 @@ coverage/
 # Docker
 docker-compose.override.yml
 .docker/
+
+# Private Credentials & Local Deployment Notes
+*.private.md
+*.local.md
 
 
 config.bat

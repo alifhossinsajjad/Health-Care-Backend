@@ -12,6 +12,13 @@ export const getGenAIClient = (): GoogleGenAI => {
       "GEMINI_API_KEY is missing from environment variables.",
     );
   }
+  if (envVars.GEMINI_BASE_URL) {
+    return new GoogleGenAI({
+      apiKey: envVars.GEMINI_API_KEY,
+      httpOptions: { baseUrl: envVars.GEMINI_BASE_URL },
+    });
+  }
+
   return new GoogleGenAI({ apiKey: envVars.GEMINI_API_KEY });
 };
 

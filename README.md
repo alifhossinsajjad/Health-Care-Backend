@@ -13,6 +13,13 @@
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Generative%20AI%20SDK-8E75B2?style=flat&logo=googlegemini&logoColor=white)
 ![Applied AI](https://img.shields.io/badge/Applied%20AI-Enterprise%20RAG-FF6F00?style=flat)
 
+---
+
+| 📖 [**Architecture Overview**](#-system-architecture--infrastructure) | 🚀 [**Contributing & Deployment Guide**](./CONTRIBUTING.md) | ⚖️ [**MIT License**](./LICENSE) | 🤍 [**Code of Conduct**](./CODE_OF_CONDUCT.md) | 🌐 [**Live Web App**](https://healthcar.me) |
+| :---: | :---: | :---: | :---: | :---: |
+
+---
+
 Welcome to the **Healthcare Application Backend**! A high-performance, enterprise-grade, horizontally scalable telemedicine backend engineered with **Node.js, Express, TypeScript, Prisma ORM, Redis, BullMQ, Docker Compose, Nginx, and Jenkins CI/CD**.
 
 ---
