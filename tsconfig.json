@@ -42,6 +42,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["src/**/*", "prisma.config.ts"],
+  "include": ["src/**/*", "prisma.config.ts", "eslint.config.mjs"],
   "exclude": ["node_modules", "dist", "generated/prisma"]
 }
