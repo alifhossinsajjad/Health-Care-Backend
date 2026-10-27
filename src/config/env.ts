@@ -49,6 +49,7 @@ interface EnvConfig {
 
   // Gemini AI
   GEMINI_API_KEY?: string;
+  GEMINI_BASE_URL?: string;
 }
 
 const loadEnvVariables = (): EnvConfig => {
@@ -120,6 +121,7 @@ const loadEnvVariables = (): EnvConfig => {
     SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_EMAIL?.trim() as string,
     SUPER_ADMIN_PASSWORD: process.env.SUPER_ADMIN_PASSWORD?.trim() as string,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY?.trim() || "",
+    GEMINI_BASE_URL: process.env.GEMINI_BASE_URL?.trim() || "",
   };
 };
 
