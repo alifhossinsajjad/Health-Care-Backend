@@ -79,12 +79,12 @@ Key environment configurations:
 ```ini
 PORT=5000
 NODE_ENV=development
-DATABASE_URL="postgresql://postgres:password@localhost:5432/healthcare_db?schema=public"
-REDIS_URL="redis://localhost:6379"
+DATABASE_URL="postgresql://postgres:your_db_url"
+REDIS_URL="redis://localhost:your_port"
 
 # Auth & Better-Auth
 BETTER_AUTH_SECRET="your-strong-auth-secret"
-BETTER_AUTH_URL="http://localhost:5000"
+BETTER_AUTH_URL="http://localhost:your_port"
 
 # AI Assistant (Google Gemini RAG)
 GEMINI_API_KEY="your-gemini-api-key"
@@ -110,7 +110,7 @@ npx tsx src/app/db/seed.ts
 ```bash
 npm run dev
 ```
-The server will boot with hot-reload at `http://localhost:5000`.
+The server will boot with hot-reload at `http://localhost:your_port`.
 
 ---
 
@@ -178,8 +178,8 @@ sudo usermod -aG docker $USER
 
 ### 5.4 Nginx Reverse Proxy Gateway
 Nginx terminates TLS/SSL on Port 443, enforces HTTPS, and load-balances traffic internally across containers:
-- `location /` ➔ Next.js Frontend (`healthcare_frontend:3000`)
-- `location /api/` ➔ Backend Express Cluster (`backend_cluster:5000`)
+- `location /` ➔ Next.js Frontend (`healthcare_frontend:your_port`)
+- `location /api/` ➔ Backend Express Cluster (`backend_cluster:your_port`)
 - `location /socket.io/` ➔ WebRTC & Real-time Socket.io signaling
 - `location /webhook` ➔ Stripe Webhook handler
 

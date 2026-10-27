@@ -1,7 +1,5 @@
 node_modules
 !.env.example
-.env
-.env*
 dist
 
 # Prisma
@@ -41,3 +39,4 @@ docker-compose.override.yml
 *.local.md
 
 
+config.bat

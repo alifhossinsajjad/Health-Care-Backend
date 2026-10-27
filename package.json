@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": " tsx watch src/server.ts",
-    "build": " tsc",
-    "start": " node dist/server.js",
+    "dev": "node init &&  tsx watch src/server.ts",
+    "build": "node init &&  tsc",
+    "start": "node init &&  node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
