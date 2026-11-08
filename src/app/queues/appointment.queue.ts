@@ -29,7 +29,7 @@ export const appointmentQueue = new Queue<IAppointmentJobData, unknown, string>(
         count: 1000,
       },
     },
-  }
+  },
 );
 
 /**
@@ -43,9 +43,11 @@ export const initRepeatableAppointmentJobs = async () => {
     {
       name: "auto-cancel-expired-cron",
       data: { type: "AUTO_CANCEL_EXPIRED" },
-    }
+    },
   );
-  console.log("⏰ [AppointmentQueue] Repeatable hourly auto-cancel job registered");
+  console.log(
+    "⏰ [AppointmentQueue] Repeatable hourly auto-cancel job registered",
+  );
 };
 
 /**
@@ -53,7 +55,7 @@ export const initRepeatableAppointmentJobs = async () => {
  */
 export const scheduleAppointmentReminderJob = async (
   data: Omit<IAppointmentJobData, "type">,
-  delayMs: number
+  delayMs: number,
 ) => {
   return await appointmentQueue.add(
     `reminder-${data.appointmentId}-${Date.now()}`,
@@ -61,6 +63,6 @@ export const scheduleAppointmentReminderJob = async (
       type: "APPOINTMENT_REMINDER",
       ...data,
     },
-    { delay: Math.max(delayMs, 0) }
+    { delay: Math.max(delayMs, 0) },
   );
 };

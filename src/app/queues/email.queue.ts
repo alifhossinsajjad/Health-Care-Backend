@@ -38,13 +38,14 @@ export const emailQueue = new Queue<IEmailJobData, unknown, string>(
 
 /**
  * Enqueue an email job asynchronously (returns immediately without waiting for SMTP)
+ * Allows optional deterministic jobId for queue deduplication
  */
 export const addEmailJob = async (
   data: IEmailJobData,
-  options?: { delay?: number; priority?: number }
+  options?: { delay?: number; priority?: number; jobId?: string }
 ) => {
   return await emailQueue.add(
-    `email-${data.templateName}-${Date.now()}`,
+    data.templateName,
     data,
     options
   );

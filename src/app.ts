@@ -11,6 +11,7 @@ import { envVars } from "./config/env";
 import { PaymentController } from "./app/modules/payment/payment.controller";
 import { scheduleAutoCancelUnpaidAppointments } from "./app/modules/appointment/appointment.cron";
 import { scheduleNotificationRetentionCleanup } from "./app/modules/notification/notification.cron";
+import { schedulePaymentInvoiceReconciliation } from "./app/modules/payment/payment.cron";
 import { requestLogger } from "./app/middlewares/requestLogger";
 
 const app: Application = express();
@@ -69,5 +70,6 @@ app.use(globalErrorHandler);
 // Initialize Cron Jobs
 scheduleAutoCancelUnpaidAppointments();
 scheduleNotificationRetentionCleanup();
+schedulePaymentInvoiceReconciliation();
 
 export default app;

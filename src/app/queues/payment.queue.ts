@@ -38,10 +38,14 @@ export const paymentQueue = new Queue<IPaymentInvoiceJobData, unknown, string>(
 
 /**
  * Enqueue invoice generation and dispatch in background
+ * Uses deterministic jobId to prevent duplicate invoice generation if enqueued multiple times
  */
 export const addPaymentInvoiceJob = async (data: IPaymentInvoiceJobData) => {
   return await paymentQueue.add(
-    `invoice-${data.paymentId}-${Date.now()}`,
-    data
+    "generate-payment-invoice",
+    data,
+    {
+      jobId: `invoice-${data.paymentId}`,
+    }
   );
 };
