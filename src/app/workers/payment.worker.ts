@@ -25,8 +25,7 @@ export const paymentWorker = new Worker<IPaymentInvoiceJobData>(
       `💳 [PaymentWorker] Processing invoice for payment: ${paymentId} (Appointment: ${appointmentId})`
     );
 
-    // 0. Idempotency Check: If invoice was already generated (e.g. worker retry after crash), skip generation & upload
-    let invoiceUrl: string | null = null;
+    // 0. Idempotency Pre-flight Check: If invoice already exists in DB, short-circuit immediately (<1ms)
     const existingPayment = await prisma.payment.findUnique({
       where: { id: paymentId },
       select: { invoiceUrl: true },
@@ -34,38 +33,43 @@ export const paymentWorker = new Worker<IPaymentInvoiceJobData>(
 
     if (existingPayment?.invoiceUrl) {
       console.log(
-        `⚡ [PaymentWorker] Invoice already exists for payment ${paymentId}. Skipping PDF render & upload.`
+        `⚡ [PaymentWorker] Invoice already exists in DB for payment ${paymentId}. Short-circuiting execution (<1ms).`
       );
-      invoiceUrl = existingPayment.invoiceUrl;
-    } else {
-      // 1. Generate Invoice PDF buffer
-      const pdfBuffer = await generateInvoicePdf({
-        invoiceId: paymentId,
-        patientName,
-        patientEmail,
-        doctorName,
-        appointmentDate,
-        amount,
-        transactionId,
-        paymentDate,
+      return {
+        success: true,
+        invoiceUrl: existingPayment.invoiceUrl,
+        skipped: true,
+        processedAt: new Date().toISOString(),
+      };
+    }
+
+    // 1. Generate Invoice PDF buffer
+    const pdfBuffer = await generateInvoicePdf({
+      invoiceId: paymentId,
+      patientName,
+      patientEmail,
+      doctorName,
+      appointmentDate,
+      amount,
+      transactionId,
+      paymentDate,
+    });
+
+    // 2. Upload PDF to Cloudinary with deterministic public ID (no timestamps, prevents duplicate orphan PDFs)
+    const cloudinaryResponse = await uploadFileToCloudinary(
+      pdfBuffer,
+      `healthcare/invoices/invoice-${paymentId}.pdf`
+    );
+
+    const invoiceUrl = cloudinaryResponse?.secure_url || null;
+
+    // 3. Update payment record with generated invoice URL
+    if (invoiceUrl) {
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: { invoiceUrl },
       });
-
-      // 2. Upload PDF to Cloudinary with deterministic public ID (no timestamps, prevents duplicate orphan PDFs)
-      const cloudinaryResponse = await uploadFileToCloudinary(
-        pdfBuffer,
-        `healthcare/invoices/invoice-${paymentId}.pdf`
-      );
-
-      invoiceUrl = cloudinaryResponse?.secure_url || null;
-
-      // 3. Update payment record with generated invoice URL
-      if (invoiceUrl) {
-        await prisma.payment.update({
-          where: { id: paymentId },
-          data: { invoiceUrl },
-        });
-        console.log(`✅ [PaymentWorker] Updated payment ${paymentId} with invoice URL`);
-      }
+      console.log(`✅ [PaymentWorker] Updated payment ${paymentId} with invoice URL`);
     }
 
     // 4. Send Confirmation & Invoice Email to Patient via Email Queue (keyed deterministically to paymentId)
